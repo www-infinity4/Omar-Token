@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omar Token Auctions</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color-scheme: light; }
+    body { margin: 0; background: #f5f7fb; color: #162033; }
+    main { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    h1, h2 { margin: 0 0 8px; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 14px; }
+    label { display: block; font-weight: 600; margin: 8px 0 4px; }
+    input, select, button { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ccd4e2; box-sizing: border-box; }
+    button { border: 0; background: #2f63ff; color: #fff; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    button.secondary { background: #5a6475; }
+    button:disabled { background: #97a0b1; cursor: not-allowed; }
+    ul { margin: 8px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; background: #e8eeff; color: #123; font-weight: 700; }
+    .hint { font-size: 0.9rem; color: #3d4961; }
+    .movie-list { max-height: 300px; overflow: auto; border: 1px solid #e3e8f2; border-radius: 8px; padding: 8px; }
+    .movie-item { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    a { color: #2f63ff; }
+    code { background: #eef2ff; padding: 2px 5px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Omar Token Launch</h1>
+    <p class="hint">Personal sales token for auctions and movie purchases.</p>
+    <div class="grid">
+      <section class="card">
+        <h2>Sign In</h2>
+        <div id="currentUser" class="hint">Not signed in.</div>
+        <label for="name">Display Name</label>
+        <input id="name" placeholder="Your name" />
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@email.com" />
+        <button id="signInBtn">Sign In</button>
+      </section>
+
+      <section class="card">
+        <h2>Token Wallet</h2>
+        <div>Buy price per token: <span class="pill">$1</span></div>
+        <div>Spendable wallet value: <span id="walletValue" class="pill">$0.00</span></div>
+        <p class="hint">Token spend value increases by about $1 per day from each token purchase date.</p>
+        <div>Available tokens (decimals supported): <span id="walletTokens" class="pill">0</span></div>
+        <label for="tokenQty">Tokens requested after PayPal payment ($1 each)</label>
+        <input id="tokenQty" type="number" min="1" value="1" />
+        <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
+        <button id="requestTokensBtn">Submit Payment Request</button>
+        <div class="hint">Pay to <code>watsonkris611@gmail.com</code> (PayPal), then request tokens. Approval can take up to 24h.</div>
+        <ul id="requestsList"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Auction Listing</h2>
+        <label for="auctionSelect">Auction Item</label>
+        <select id="auctionSelect"></select>
+        <div id="auctionInfo" class="hint"></div>
+        <label for="bidAmount">Bid Amount (USD)</label>
+        <input id="bidAmount" type="number" min="1" value="1" />
+        <button id="bidBtn">Sign Up & Place Bid</button>
+        <ul id="bidsList"></ul>
+      </section>
+
+      <section class="card" style="grid-column: 1/-1;">
+        <h2>100 Movie Catalog Entries</h2>
+        <p class="hint">Each movie purchase charges $5.</p>
+        <div class="movie-list" id="movieList"></div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const storageKey = "omarTokenData";
+    const tokenBuyPriceUsd = 1;
+    const state = loadState();
+
+    const auctions = [
+      { id: "coin-set-1881", item: "1881 Morgan Silver Dollar", highestBid: 30 },
+      { id: "coin-set-1909", item: "1909 Wheat Penny", highestBid: 12 },
+      { id: "coin-set-1916", item: "1916 Mercury Dime", highestBid: 18 }
+    ];
+
+    const moviePriceUsd = 5;
+    const movies = Array.from({ length: 100 }).map((_, i) => ({
+      id: i + 1,
+      title: `Featured Movie #${i + 1}`,
+      url: `https://www.youtube.com/results?search_query=free+mystery+movie+${i + 1}`
+    }));
+
+    const els = {
+      name: document.getElementById("name"),
+      email: document.getElementById("email"),
+      signInBtn: document.getElementById("signInBtn"),
+      currentUser: document.getElementById("currentUser"),
+      walletValue: document.getElementById("walletValue"),
+      walletTokens: document.getElementById("walletTokens"),
+      tokenQty: document.getElementById("tokenQty"),
+      requestCharge: document.getElementById("requestCharge"),
+      requestTokensBtn: document.getElementById("requestTokensBtn"),
+      requestsList: document.getElementById("requestsList"),
+      auctionSelect: document.getElementById("auctionSelect"),
+      auctionInfo: document.getElementById("auctionInfo"),
+      bidAmount: document.getElementById("bidAmount"),
+      bidBtn: document.getElementById("bidBtn"),
+      bidsList: document.getElementById("bidsList"),
+      movieList: document.getElementById("movieList")
+    };
+
+    function loadState() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || {
+          user: null,
+          tokenLots: [],
+          tokenRequests: [],
+          bids: [],
+          unlockedMovies: []
+        };
+      } catch {
+        return { user: null, tokenLots: [], tokenRequests: [], bids: [], unlockedMovies: [] };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function migrateState() {
+      if (!Array.isArray(state.tokenLots)) state.tokenLots = [];
+      if (typeof state.walletTokens === "number" && state.walletTokens > 0) {
+        state.tokenLots.push({ quantity: state.walletTokens, purchasedAt: Date.now() });
+        delete state.walletTokens;
+      }
+      if (!Array.isArray(state.unlockedMovies)) state.unlockedMovies = [];
+      if (!Array.isArray(state.tokenRequests)) state.tokenRequests = [];
+      if (!Array.isArray(state.bids)) state.bids = [];
+    }
+
+    function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
+      const elapsedDays = Math.floor((now - purchasedAt) / 86400000);
+      return Math.max(1, 1 + elapsedDays);
+    }
+
+    function totalTokenCount() {
+      return state.tokenLots.reduce((sum, lot) => sum + lot.quantity, 0);
+    }
+
+    function totalSpendableValueUsd(now = Date.now()) {
+      return state.tokenLots.reduce((sum, lot) => sum + (lot.quantity * tokenUnitSpendValue(lot.purchasedAt, now)), 0);
+    }
+
+    function spendUsdFromLots(amountUsd) {
+      const originalLots = state.tokenLots.map((lot) => ({ ...lot }));
+      let remaining = amountUsd;
+      const lots = [...state.tokenLots].sort((a, b) => tokenUnitSpendValue(b.purchasedAt) - tokenUnitSpendValue(a.purchasedAt));
+
+      for (const lot of lots) {
+        if (remaining <= 0) break;
+        const unitValue = tokenUnitSpendValue(lot.purchasedAt);
+        const lotValue = lot.quantity * unitValue;
+        const takeValue = Math.min(lotValue, remaining);
+        const quantityToUse = takeValue / unitValue;
+        lot.quantity = Number((lot.quantity - quantityToUse).toFixed(8));
+        remaining = Number((remaining - takeValue).toFixed(8));
+      }
+
+      if (remaining > 0.000001) {
+        state.tokenLots = originalLots;
+        return false;
+      }
+
+      state.tokenLots = state.tokenLots
+        .map((lot) => ({ ...lot, quantity: Number(lot.quantity.toFixed(8)) }))
+        .filter((lot) => lot.quantity > 0.00000001);
+      return true;
+    }
+
+    function processApprovals() {
+      const now = Date.now();
+      state.tokenRequests.forEach((req) => {
+        const ageMs = now - req.requestedAt;
+        if (!req.approved && ageMs >= 86400000) {
+          req.approved = true;
+          state.tokenLots.push({
+            quantity: req.quantity,
+            purchasedAt: req.requestedAt
+          });
+        }
+      });
+    }
+
+    function signedIn() {
+      return Boolean(state.user && state.user.email);
+    }
+
+    function renderUser() {
+      if (signedIn()) {
+        els.currentUser.textContent = `Signed in as ${state.user.name} (${state.user.email})`;
+      } else {
+        els.currentUser.textContent = "Not signed in.";
+      }
+    }
+
+    function renderWallet() {
+      const qty = Number(totalTokenCount().toFixed(8));
+      const spendValue = totalSpendableValueUsd();
+      els.walletTokens.textContent = qty;
+      els.walletValue.textContent = `$${spendValue.toFixed(2)}`;
+      els.requestTokensBtn.disabled = !signedIn();
+      const requestedQty = Number(els.tokenQty.value);
+      const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * tokenBuyPriceUsd : 0;
+      els.requestCharge.textContent = `$${charge.toFixed(2)}`;
+    }
+
+    function renderRequests() {
+      els.requestsList.innerHTML = "";
+      state.tokenRequests
+        .slice()
+        .reverse()
+        .forEach((req) => {
+          const li = document.createElement("li");
+          const status = req.approved ? "approved" : "pending (up to 24h)";
+          li.textContent = `${req.quantity} token(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
+          els.requestsList.appendChild(li);
+        });
+    }
+
+    function renderAuctions() {
+      els.auctionSelect.innerHTML = "";
+      auctions.forEach((a) => {
+        const option = document.createElement("option");
+        option.value = a.id;
+        option.textContent = a.item;
+        els.auctionSelect.appendChild(option);
+      });
+      refreshAuctionInfo();
+      els.bidsList.innerHTML = "";
+      state.bids.slice().reverse().forEach((bid) => {
+        const li = document.createElement("li");
+        li.textContent = `${bid.userName} bid $${bid.amount} on ${bid.item}`;
+        els.bidsList.appendChild(li);
+      });
+      els.bidBtn.disabled = !signedIn();
+    }
+
+    function refreshAuctionInfo() {
+      const found = auctions.find((a) => a.id === els.auctionSelect.value) || auctions[0];
+      if (!found) return;
+      els.auctionInfo.textContent = `Current highest bid: $${found.highestBid}`;
+    }
+
+    function renderMovies() {
+      els.movieList.innerHTML = "";
+      movies.forEach((movie) => {
+        const row = document.createElement("div");
+        row.className = "movie-item";
+        const left = document.createElement("div");
+        const link = document.createElement("a");
+        link.href = movie.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = movie.title;
+        left.appendChild(link);
+        const btn = document.createElement("button");
+        btn.textContent = state.unlockedMovies.includes(movie.id) ? "Purchased" : `Buy ($${moviePriceUsd})`;
+        btn.disabled = !signedIn() || state.unlockedMovies.includes(movie.id) || totalSpendableValueUsd() < moviePriceUsd;
+        btn.addEventListener("click", () => {
+          if (!spendUsdFromLots(moviePriceUsd)) return;
+          state.unlockedMovies.push(movie.id);
+          saveState();
+          render();
+        });
+        row.appendChild(left);
+        row.appendChild(btn);
+        els.movieList.appendChild(row);
+      });
+    }
+
+    function render() {
+      migrateState();
+      processApprovals();
+      saveState();
+      renderUser();
+      renderWallet();
+      renderRequests();
+      renderAuctions();
+      renderMovies();
+    }
+
+    els.signInBtn.addEventListener("click", () => {
+      const name = els.name.value.trim();
+      const email = els.email.value.trim();
+      if (!name || !email) return;
+      state.user = { name, email };
+      saveState();
+      render();
+    });
+
+    els.requestTokensBtn.addEventListener("click", () => {
+      const quantity = Number(els.tokenQty.value);
+      if (!signedIn() || !Number.isInteger(quantity) || quantity < 1) return;
+      state.tokenRequests.push({
+        quantity,
+        requestedAt: Date.now(),
+        approved: false
+      });
+      saveState();
+      render();
+    });
+
+    els.tokenQty.addEventListener("input", renderWallet);
+
+    els.auctionSelect.addEventListener("change", refreshAuctionInfo);
+
+    els.bidBtn.addEventListener("click", () => {
+      const selected = auctions.find((a) => a.id === els.auctionSelect.value);
+      const amount = Number(els.bidAmount.value);
+      if (!signedIn() || !selected || !Number.isFinite(amount) || amount <= selected.highestBid) return;
+      selected.highestBid = amount;
+      state.bids.push({
+        userName: state.user.name,
+        amount,
+        item: selected.item,
+        at: Date.now()
+      });
+      saveState();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
