@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Omar Token Auctions</title>
+  <title>Omar Resonance Catalyst</title>
   <style>
     :root { font-family: Arial, sans-serif; color-scheme: light; }
     body { margin: 0; background: #f5f7fb; color: #162033; }
@@ -92,8 +92,8 @@
 </head>
 <body>
   <main>
-    <h1>Omar Token Launch</h1>
-    <p class="hint">Personal sales token for auctions and movie purchases.</p>
+    <h1>Omar Resonance Catalyst</h1>
+    <p class="hint">Personal resonance catalyst for auctions and movie purchases.</p>
     <div class="grid">
       <section class="card">
         <h2>Sign In</h2>
@@ -355,7 +355,8 @@
                 glow: "#ff6b3566" },
         to:   { num: 8,  symbol: "O",  name: "Oxygen",
                 bg: "radial-gradient(circle,#c6fff9 0%,#4ecdc4 50%,#2aada4 100%)",
-                dormantShadow: "0 0 8px #4ecdc422" },
+                dormantShadow: "0 0 8px #4ecdc422",
+                awakeShadow:   "0 0 36px #4ecdc499, 0 0 70px #4ecdc444" },
         intent: "Aggression / Shielding",
         genre:  "Film Noir & Action",
         chains: [
@@ -373,7 +374,8 @@
                 glow: "#f5c51866" },
         to:   { num: 53, symbol: "I",  name: "Iodine",
                 bg: "radial-gradient(circle,#f0e8ff 0%,#a06ad4 50%,#7a3fb0 100%)",
-                dormantShadow: "0 0 8px #a06ad422" },
+                dormantShadow: "0 0 8px #a06ad422",
+                awakeShadow:   "0 0 36px #a06ad499, 0 0 70px #a06ad444" },
         intent: "Protection / Shield",
         genre:  "Sci-Fi & Documentaries",
         chains: [
@@ -391,7 +393,8 @@
                 glow: "#ff8fab66" },
         to:   { num: 72, symbol: "Hf", name: "Hafnium",
                 bg: "radial-gradient(circle,#eedaff 0%,#c77dff 50%,#9e44d6 100%)",
-                dormantShadow: "0 0 8px #c77dff22" },
+                dormantShadow: "0 0 8px #c77dff22",
+                awakeShadow:   "0 0 36px #c77dff99, 0 0 70px #c77dff44" },
         intent: "Connection / Love",
         genre:  "Romance & Human Stories",
         chains: [
@@ -405,8 +408,8 @@
       }
     ];
 
-    let hullResonance    = 54;  // 54 = stable Xenon, 53 = discharged
-    let selectedPairIdx  = 1;   // default: 54↓53
+    let hullResonance    = null; // null = stable (matches activePair().from.num); set to pair.to.num when discharged
+    let selectedPairIdx  = 1;    // default: 54↓53
     let selectedChainIdx = 0;   // default: first (cheapest) chain
     let resonanceMovie   = null;
     let audioCtx         = null;
@@ -428,7 +431,7 @@
           `<div class="pair-intent">${pair.intent}</div>` +
           `<div class="pair-mincost">from ${pair.chains[0].cost} Catalyst${pair.chains[0].cost !== 1 ? "s" : ""}</div>`;
         card.addEventListener("click", () => {
-          if (hullResonance !== 54) return;
+          if (hullResonance !== null) return;
           selectedPairIdx  = i;
           selectedChainIdx = 0;
           renderResonanceChamber();
@@ -449,7 +452,7 @@
           `<div class="chain-label">${chain.label}</div>` +
           `<div class="chain-desc">${chain.desc}</div>`;
         card.addEventListener("click", () => {
-          if (hullResonance !== 54) return;
+          if (hullResonance !== null) return;
           selectedChainIdx = i;
           renderResonanceChamber();
         });
@@ -463,7 +466,7 @@
 
       const pair     = activePair();
       const chain    = activeChain();
-      const isStable = hullResonance === 54;
+      const isStable = hullResonance === null;
 
       // Update "from" node appearance
       const nodeFrom  = document.getElementById("nodeFrom");
@@ -483,10 +486,7 @@
       const toState = document.getElementById("toState");
       if (nodeTo) {
         nodeTo.style.background = pair.to.bg;
-        nodeTo.style.boxShadow  = isStable
-          ? pair.to.dormantShadow
-          : pair.to.dormantShadow.replace(/0 0 8px/, "0 0 36px").replace(/22\)$/, "99)") +
-            `, 0 0 70px ${pair.to.dormantShadow.slice(pair.to.dormantShadow.lastIndexOf(" ")+1).replace("22)","44)")}`;
+        nodeTo.style.boxShadow  = isStable ? pair.to.dormantShadow : pair.to.awakeShadow;
         nodeTo.className = "node node-to" + (isStable ? "" : " awake");
       }
       if (toSym)   toSym.textContent   = pair.to.symbol;
@@ -538,7 +538,7 @@
         reBtn.style.marginTop = "6px";
         reBtn.textContent   = "\u2191 Restabilize Field";
         reBtn.addEventListener("click", () => {
-          hullResonance  = 54;
+          hullResonance  = null;
           resonanceMovie = null;
           const st = document.getElementById("resonanceStatus");
           if (st) st.textContent = "";
@@ -549,7 +549,7 @@
     }
 
     async function downshift() {
-      if (hullResonance !== 54) return;
+      if (hullResonance !== null) return;
       if (!signedIn()) {
         document.getElementById("resonanceStatus").textContent = "Sign in to trigger a downshift.";
         return;
@@ -586,7 +586,7 @@
           title: String(pick.title).trim(),
           archiveId: pick.identifier
         };
-        hullResonance = 53;
+        hullResonance = activePair().to.num;
         document.getElementById("resonanceStatus").textContent = "";
       } catch (err) {
         document.getElementById("resonanceStatus").textContent =
@@ -603,7 +603,7 @@
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           const osc  = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
-          // I-127 principal absorption line ~514 nm → 583.6 THz → ÷2^44 ≈ 33.2 Hz
+          // I-127 principal absorption line ~514 nm → c/λ ≈ 583.6 THz → ÷2^44 (17.59 trillion) ≈ 33.2 Hz
           osc.type = "sine";
           osc.frequency.value = 33.2;
           gain.gain.value = 0.06;
