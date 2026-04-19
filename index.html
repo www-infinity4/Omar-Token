@@ -203,8 +203,6 @@
     const MIN_BID_INCREMENT_USD = 1;
     const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
     const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "marvaseater@gmail.com";
-    const ADMIN_EMAIL = "marvaseater@gmail.com";
-    const ADMIN_EMAIL_NORMALIZED = ADMIN_EMAIL.toLowerCase();
     const state = loadState();
 
     const auctions = [
@@ -748,10 +746,6 @@
       return Boolean(state.user && state.user.name && state.user.email);
     }
 
-    function isAdmin() {
-      return signedIn() && String(state.user.email).trim().toLowerCase() === ADMIN_EMAIL_NORMALIZED;
-    }
-
     function approveTokenRequest(req) {
       if (req.approved) return;
       req.approved = true;
@@ -776,7 +770,7 @@
 
     function renderUser() {
       if (signedIn()) {
-        els.currentUser.textContent = `Signed in as ${state.user.name} (${state.user.email})${isAdmin() ? " — Admin" : ""}`;
+        els.currentUser.textContent = `Signed in as ${state.user.name} (${state.user.email})`;
       } else {
         els.currentUser.textContent = "Not signed in.";
       }
@@ -815,20 +809,6 @@
           const li = document.createElement("li");
           const status = req.approved ? "approved" : "pending (up to 24h)";
           li.textContent = `${req.quantity} Catalyst(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
-          if (!req.approved && isAdmin()) {
-            const approveBtn = document.createElement("button");
-            approveBtn.type = "button";
-            approveBtn.textContent = "Approve & Mark Paid";
-            approveBtn.style.marginTop = "6px";
-            approveBtn.addEventListener("click", () => {
-              approveTokenRequest(req);
-              setActionStatus("Payment marked as received and request approved.");
-              saveState();
-              render();
-            });
-            li.appendChild(document.createElement("br"));
-            li.appendChild(approveBtn);
-          }
           els.requestsList.appendChild(li);
         });
     }
