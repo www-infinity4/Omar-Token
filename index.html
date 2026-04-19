@@ -72,6 +72,22 @@
     .resonance-controls button { width: auto; margin-top: 0; padding: 9px 24px; }
     .tone-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
     .tone-bar button { width: auto; margin-top: 0; padding: 4px 14px; font-size: 0.78rem; }
+    /* Atomic Oracle — pair selector dial */
+    .pair-selector { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .pair-card { border: 2px solid #ccd4e2; border-radius: 10px; padding: 10px 14px; cursor: pointer; min-width: 105px; text-align: center; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; }
+    .pair-card:hover { border-color: #7a9fff; }
+    .pair-card.selected { border-color: #2f63ff; box-shadow: 0 0 0 2px #2f63ff44; background: #f0f5ff; }
+    .pair-nums { font-size: 1.3rem; font-weight: 900; color: #162033; line-height: 1.2; }
+    .pair-arrow { font-size: 0.85rem; margin: 0 1px; color: #5a6475; }
+    .pair-symbols { font-size: 0.82rem; font-weight: 700; color: #3d4961; margin: 2px 0 1px; }
+    .pair-intent { font-size: 0.65rem; color: #5a6475; }
+    .pair-mincost { font-size: 0.68rem; color: #2f63ff; font-weight: 700; margin-top: 3px; }
+    /* Dynamic node classes (colors set via JS inline style) */
+    .node-from { animation: node-from-glow 2.5s ease-in-out infinite; }
+    .node-to { transition: box-shadow 0.6s, transform 0.6s; }
+    .node-to.awake { animation: node-to-pulse 1s ease-in-out infinite; }
+    @keyframes node-from-glow { 0%,100% { filter: brightness(1);   } 50% { filter: brightness(1.25); } }
+    @keyframes node-to-pulse  { 0%,100% { transform: scale(1);     } 50% { transform: scale(1.05);   } }
   </style>
 </head>
 <body>
@@ -117,26 +133,27 @@
 
       <!-- Leyden Jar: 54/53 Resonance Chamber -->
       <section class="card resonance-chamber" style="grid-column: 1/-1;">
-        <h2>The Leyden Jar — 54/53 Resonance Chamber</h2>
-        <p class="hint">The Xenon node (54) holds the charge. Chain Resonance Catalysts to bring it close to Iodine (53). At contact, the field discharges — a hidden film materialises from the Archive.</p>
+        <h2>The Atomic Oracle — Resonance Pair Chamber</h2>
+        <p class="hint">Select a resonance pair, choose your chain depth, then discharge. Higher atomic weight = rarer content = more Catalysts required.</p>
+        <div class="pair-selector" id="pairSelector"></div>
         <div class="leyden-jar">
-          <div class="node node-xenon">
-            <div class="node-symbol">Xe</div>
-            <div class="node-num">54</div>
+          <div class="node node-from" id="nodeFrom">
+            <div class="node-symbol" id="fromSymbol">Xe</div>
+            <div class="node-num" id="fromNum">54</div>
             <div class="node-state">HIGH ENERGY</div>
           </div>
           <div class="node-gap" id="nodeGap">
             <div class="gap-sparks" id="gapSparks">&#x26A1;</div>
           </div>
-          <div class="node node-iodine" id="nodeIodine">
-            <div class="node-symbol">I</div>
-            <div class="node-num">53</div>
-            <div class="node-state" id="iodineState">DORMANT</div>
+          <div class="node node-to" id="nodeTo">
+            <div class="node-symbol" id="toSymbol">I</div>
+            <div class="node-num" id="toNum">53</div>
+            <div class="node-state" id="toState">DORMANT</div>
           </div>
         </div>
         <div class="chain-ladder" id="chainLadder"></div>
         <div class="resonance-controls" id="resonanceControls"></div>
-        <div id="resonanceStatus" class="hint" style="min-height:1.4em;"></div>
+        <div id="resonanceStatus" class="hint" style="min-height:1.4em;text-align:center;"></div>
         <div class="tone-bar">
           <button id="audioToggle" class="secondary">&#x1F507; Iodine Tone: Off</button>
           <span class="hint" style="font-size:0.72rem;">~33.2 Hz &mdash; I-127 principal line, &minus;44 octaves</span>
@@ -328,6 +345,285 @@
       return movies.concat(liveMovies.filter(m => !existingIds.has(m.archiveId)));
     }
 
+    // ── Atomic Oracle — Resonance Pairs ──────────────────────────────────────
+    // Three atomic resonance pairs, each with a distinct intent, IA query,
+    // and chain-cost scale that rises with atomic weight of the source element.
+    const RESONANCE_PAIRS = [
+      {
+        from: { num: 9,  symbol: "F",  name: "Fluorine",
+                bg: "radial-gradient(circle,#ffd4bb 0%,#ff6b35 50%,#cc4400 100%)",
+                glow: "#ff6b3566" },
+        to:   { num: 8,  symbol: "O",  name: "Oxygen",
+                bg: "radial-gradient(circle,#c6fff9 0%,#4ecdc4 50%,#2aada4 100%)",
+                dormantShadow: "0 0 8px #4ecdc422" },
+        intent: "Aggression / Shielding",
+        genre:  "Film Noir & Action",
+        chains: [
+          { cost: 1, label: "Standard", desc: "Noir Archive",
+            q: "subject:(film+noir)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 2, label: "Rare",     desc: "Mystery Field",
+            q: "subject:(mystery)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 3, label: "Deep",     desc: "Prelinger",
+            q: "collection:(prelinger)+AND+mediatype:(movies)" }
+        ]
+      },
+      {
+        from: { num: 54, symbol: "Xe", name: "Xenon",
+                bg: "radial-gradient(circle,#fff9d0 0%,#f5c518 50%,#e8a800 100%)",
+                glow: "#f5c51866" },
+        to:   { num: 53, symbol: "I",  name: "Iodine",
+                bg: "radial-gradient(circle,#f0e8ff 0%,#a06ad4 50%,#7a3fb0 100%)",
+                dormantShadow: "0 0 8px #a06ad422" },
+        intent: "Protection / Shield",
+        genre:  "Sci-Fi & Documentaries",
+        chains: [
+          { cost: 2, label: "Standard", desc: "Sci-Fi Archive",
+            q: "collection:(publicmovies212)+AND+mediatype:(movies)" },
+          { cost: 4, label: "Rare",     desc: "Prelinger Sci",
+            q: "collection:(prelinger)+AND+mediatype:(movies)" },
+          { cost: 6, label: "Deep",     desc: "Deep Science",
+            q: "collection:(prelinger)+AND+mediatype:(movies)+AND+subject:(science)" }
+        ]
+      },
+      {
+        from: { num: 73, symbol: "Ta", name: "Tantalum",
+                bg: "radial-gradient(circle,#ffe0ea 0%,#ff8fab 50%,#dd5580 100%)",
+                glow: "#ff8fab66" },
+        to:   { num: 72, symbol: "Hf", name: "Hafnium",
+                bg: "radial-gradient(circle,#eedaff 0%,#c77dff 50%,#9e44d6 100%)",
+                dormantShadow: "0 0 8px #c77dff22" },
+        intent: "Connection / Love",
+        genre:  "Romance & Human Stories",
+        chains: [
+          { cost: 3,  label: "Standard", desc: "Romance Archive",
+            q: "subject:(romance)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 6,  label: "Rare",     desc: "Human Drama",
+            q: "subject:(drama)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 10, label: "Deep",     desc: "Feature Films",
+            q: "collection:(feature_films)+AND+mediatype:(movies)" }
+        ]
+      }
+    ];
+
+    let hullResonance    = 54;  // 54 = stable Xenon, 53 = discharged
+    let selectedPairIdx  = 1;   // default: 54↓53
+    let selectedChainIdx = 0;   // default: first (cheapest) chain
+    let resonanceMovie   = null;
+    let audioCtx         = null;
+    let audioEnabled     = false;
+
+    function activePair()  { return RESONANCE_PAIRS[selectedPairIdx]; }
+    function activeChain() { return activePair().chains[selectedChainIdx]; }
+
+    function renderPairSelector() {
+      const sel = document.getElementById("pairSelector");
+      if (!sel) return;
+      sel.innerHTML = "";
+      RESONANCE_PAIRS.forEach((pair, i) => {
+        const card = document.createElement("div");
+        card.className = "pair-card" + (selectedPairIdx === i ? " selected" : "");
+        card.innerHTML =
+          `<div class="pair-nums">${pair.from.num}<span class="pair-arrow">&#x2193;</span>${pair.to.num}</div>` +
+          `<div class="pair-symbols">${pair.from.symbol} &#x2192; ${pair.to.symbol}</div>` +
+          `<div class="pair-intent">${pair.intent}</div>` +
+          `<div class="pair-mincost">from ${pair.chains[0].cost} Catalyst${pair.chains[0].cost !== 1 ? "s" : ""}</div>`;
+        card.addEventListener("click", () => {
+          if (hullResonance !== 54) return;
+          selectedPairIdx  = i;
+          selectedChainIdx = 0;
+          renderResonanceChamber();
+        });
+        sel.appendChild(card);
+      });
+    }
+
+    function renderChainLadder() {
+      const ladder = document.getElementById("chainLadder");
+      if (!ladder) return;
+      ladder.innerHTML = "";
+      activePair().chains.forEach((chain, i) => {
+        const card = document.createElement("div");
+        card.className = "chain-card" + (selectedChainIdx === i ? " selected" : "");
+        card.innerHTML =
+          `<div class="chain-cost">${"⚡".repeat(i + 1)} ${chain.cost} Catalyst${chain.cost !== 1 ? "s" : ""}</div>` +
+          `<div class="chain-label">${chain.label}</div>` +
+          `<div class="chain-desc">${chain.desc}</div>`;
+        card.addEventListener("click", () => {
+          if (hullResonance !== 54) return;
+          selectedChainIdx = i;
+          renderResonanceChamber();
+        });
+        ladder.appendChild(card);
+      });
+    }
+
+    function renderResonanceChamber() {
+      renderPairSelector();
+      renderChainLadder();
+
+      const pair     = activePair();
+      const chain    = activeChain();
+      const isStable = hullResonance === 54;
+
+      // Update "from" node appearance
+      const nodeFrom  = document.getElementById("nodeFrom");
+      const fromSym   = document.getElementById("fromSymbol");
+      const fromNum   = document.getElementById("fromNum");
+      if (nodeFrom) {
+        nodeFrom.style.background  = pair.from.bg;
+        nodeFrom.style.boxShadow   = `0 0 30px ${pair.from.glow}, 0 0 60px ${pair.from.glow}`;
+      }
+      if (fromSym) fromSym.textContent = pair.from.symbol;
+      if (fromNum) fromNum.textContent = pair.from.num;
+
+      // Update "to" node appearance
+      const nodeTo  = document.getElementById("nodeTo");
+      const toSym   = document.getElementById("toSymbol");
+      const toNum   = document.getElementById("toNum");
+      const toState = document.getElementById("toState");
+      if (nodeTo) {
+        nodeTo.style.background = pair.to.bg;
+        nodeTo.style.boxShadow  = isStable
+          ? pair.to.dormantShadow
+          : pair.to.dormantShadow.replace(/0 0 8px/, "0 0 36px").replace(/22\)$/, "99)") +
+            `, 0 0 70px ${pair.to.dormantShadow.slice(pair.to.dormantShadow.lastIndexOf(" ")+1).replace("22)","44)")}`;
+        nodeTo.className = "node node-to" + (isStable ? "" : " awake");
+      }
+      if (toSym)   toSym.textContent   = pair.to.symbol;
+      if (toNum)   toNum.textContent   = pair.to.num;
+      if (toState) toState.textContent = isStable ? "DORMANT" : "FIELD ACTIVE";
+
+      // Node gap
+      const gap    = document.getElementById("nodeGap");
+      const sparks = document.getElementById("gapSparks");
+      if (gap) {
+        const widths = ["80px", "40px", "10px"];
+        gap.style.width    = isStable ? (widths[selectedChainIdx] || "80px") : "0px";
+        gap.style.minWidth = gap.style.width;
+      }
+      if (sparks) {
+        sparks.className = "gap-sparks" + (isStable && selectedChainIdx === 2 ? " visible" : "");
+      }
+
+      // Controls
+      const controls = document.getElementById("resonanceControls");
+      if (!controls) return;
+      controls.innerHTML = "";
+
+      if (isStable) {
+        const walletVal = totalSpendableValueUsd();
+        const btn = document.createElement("button");
+        btn.innerHTML = `&#x26A1; Discharge &mdash; ${chain.cost} Catalyst${chain.cost !== 1 ? "s" : ""}`;
+        btn.disabled = !signedIn() || walletVal < chain.cost;
+        btn.addEventListener("click", downshift);
+        controls.appendChild(btn);
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.style.margin = "4px 0 0";
+        hint.textContent = `${pair.from.num}\u2193${pair.to.num}  \u00b7  ${pair.intent}  \u00b7  ${pair.genre}`;
+        controls.appendChild(hint);
+      } else {
+        if (resonanceMovie) {
+          const titleDiv = document.createElement("p");
+          titleDiv.style.cssText = "font-weight:700;margin:0 0 8px;font-size:1rem;";
+          titleDiv.textContent   = "\u26A1 " + resonanceMovie.title;
+          controls.appendChild(titleDiv);
+          const watchBtn = document.createElement("button");
+          watchBtn.textContent = "▶ Observe Resonance Event";
+          watchBtn.addEventListener("click", () => openPlayer(resonanceMovie));
+          controls.appendChild(watchBtn);
+        }
+        const reBtn = document.createElement("button");
+        reBtn.className     = "secondary";
+        reBtn.style.marginTop = "6px";
+        reBtn.textContent   = "\u2191 Restabilize Field";
+        reBtn.addEventListener("click", () => {
+          hullResonance  = 54;
+          resonanceMovie = null;
+          const st = document.getElementById("resonanceStatus");
+          if (st) st.textContent = "";
+          render();
+        });
+        controls.appendChild(reBtn);
+      }
+    }
+
+    async function downshift() {
+      if (hullResonance !== 54) return;
+      if (!signedIn()) {
+        document.getElementById("resonanceStatus").textContent = "Sign in to trigger a downshift.";
+        return;
+      }
+      const chain = activeChain();
+      if (totalSpendableValueUsd() < chain.cost) {
+        document.getElementById("resonanceStatus").textContent =
+          `Insufficient Resonance Catalysts — need ${chain.cost}.`;
+        return;
+      }
+      const btn = document.querySelector("#resonanceControls button:not(.secondary)");
+      if (btn) btn.disabled = true;
+      document.getElementById("resonanceStatus").textContent = "Inducing resonance field\u2026";
+      try {
+        const params = [
+          chain.q,
+          "fl[]=identifier", "fl[]=title",
+          "sort[]=downloads+desc",
+          "output=json", "rows=50"
+        ].join("&");
+        const res = await fetch(`https://archive.org/advancedsearch.php?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const docs = (data?.response?.docs ?? []).filter(
+          d => d.identifier && d.title && ARCHIVE_ID_PATTERN.test(d.identifier)
+        );
+        if (docs.length === 0) throw new Error("No resonant files found in this field.");
+        const pick = docs[Math.floor(Math.random() * docs.length)];
+        // Charge only after a confirmed result
+        if (!spendUsdFromLots(chain.cost)) throw new Error("Insufficient Resonance Catalysts.");
+        saveState();
+        resonanceMovie = {
+          id: 9000 + Math.floor(Math.random() * 999),
+          title: String(pick.title).trim(),
+          archiveId: pick.identifier
+        };
+        hullResonance = 53;
+        document.getElementById("resonanceStatus").textContent = "";
+      } catch (err) {
+        document.getElementById("resonanceStatus").textContent =
+          `\u26A0 Field induction failed: ${err.message}`;
+        if (btn) btn.disabled = false;
+      }
+      render();
+    }
+
+    function toggleAudio() {
+      const btn = document.getElementById("audioToggle");
+      if (!audioEnabled) {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc  = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          // I-127 principal absorption line ~514 nm → 583.6 THz → ÷2^44 ≈ 33.2 Hz
+          osc.type = "sine";
+          osc.frequency.value = 33.2;
+          gain.gain.value = 0.06;
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          audioCtx._osc  = osc;
+          audioCtx._gain = gain;
+        } else {
+          audioCtx.resume();
+        }
+        audioEnabled = true;
+        if (btn) btn.textContent = "\uD83D\uDD0A Iodine Tone: On";
+      } else {
+        audioCtx.suspend();
+        audioEnabled = false;
+        if (btn) btn.textContent = "\uD83D\uDD07 Iodine Tone: Off";
+      }
+    }
+
     const els = {
       name: document.getElementById("name"),
       email: document.getElementById("email"),
@@ -481,7 +777,7 @@
         .forEach((req) => {
           const li = document.createElement("li");
           const status = req.approved ? "approved" : "pending (up to 24h)";
-          li.textContent = `${req.quantity} token(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
+          li.textContent = `${req.quantity} Catalyst(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
           els.requestsList.appendChild(li);
         });
     }
@@ -622,6 +918,7 @@
       renderWallet();
       renderRequests();
       renderAuctions();
+      renderResonanceChamber();
       renderMovies();
     }
 
@@ -701,6 +998,7 @@
     }
 
     document.getElementById("fetchBtn").addEventListener("click", fetchFromArchive);
+    document.getElementById("audioToggle").addEventListener("click", toggleAudio);
 
     els.closePlayer.addEventListener("click", closePlayer);
     els.playerModal.addEventListener("click", (e) => {
