@@ -4,7 +4,7 @@ Minimal single-page demo for a personal auction token:
 
 - Sign in with name/email (stored locally in browser only)
 - Token buy price is **$1 per token**
-- Token spend value grows over time (about +$1/day per token age)
+- Token spend value grows over time (about +$1/day based on days since token purchase)
 - Buyers submit a PayPal payment request in this demo flow (proof upload is not implemented)
 - Token requests are approved after 24 hours
 - 100 movie catalog entries are sourced from free YouTube listings
@@ -20,4 +20,4 @@ Optional: set `localStorage.omarPayPalEmail` to your PayPal address before use.
 
 ## Security note
 
-This demo does **not** use, require, or store any GitHub personal access token (GHP).
+This demo does **not** use, require, or store any GitHub personal access token (PAT).

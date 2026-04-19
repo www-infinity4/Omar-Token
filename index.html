@@ -80,6 +80,7 @@
     const MS_PER_DAY = 86400000;
     const FLOAT_EPSILON = 0.000001;
     const MIN_TOKEN_QUANTITY = 0.01;
+    const MAX_TOKEN_QUANTITY = 100000;
     const MIN_BID_INCREMENT_USD = 1;
     const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
     const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "seller@example.com";
@@ -156,8 +157,8 @@
     }
 
     function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
-      const elapsedDays = Math.floor((now - purchasedAt) / MS_PER_DAY);
-      return Math.max(1, 1 + elapsedDays);
+      const elapsedDays = Math.max(0, Math.floor((now - purchasedAt) / MS_PER_DAY));
+      return 1 + elapsedDays;
     }
 
     function totalTokenCount() {
@@ -331,8 +332,8 @@
         setActionStatus("Sign in before submitting a token request.", true);
         return;
       }
-      if (!Number.isFinite(quantity) || quantity < MIN_TOKEN_QUANTITY) {
-        setActionStatus(`Enter a valid token quantity (minimum ${MIN_TOKEN_QUANTITY}).`, true);
+      if (!Number.isFinite(quantity) || quantity < MIN_TOKEN_QUANTITY || quantity > MAX_TOKEN_QUANTITY) {
+        setActionStatus(`Enter a valid token quantity (${MIN_TOKEN_QUANTITY} - ${MAX_TOKEN_QUANTITY}).`, true);
         return;
       }
       state.tokenRequests.push({
