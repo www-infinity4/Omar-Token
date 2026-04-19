@@ -20,9 +20,22 @@
     .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; background: #e8eeff; color: #123; font-weight: 700; }
     .hint { font-size: 0.9rem; color: #3d4961; }
     .movie-list { max-height: 300px; overflow: auto; border: 1px solid #e3e8f2; border-radius: 8px; padding: 8px; }
-    .movie-item { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .movie-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .movie-item span { flex: 1; font-size: 0.95rem; }
+    .movie-item .btn-row { display: flex; gap: 6px; flex-shrink: 0; }
+    .movie-item .btn-row button { width: auto; margin-top: 0; padding: 5px 12px; font-size: 0.85rem; }
     a { color: #2f63ff; }
     code { background: #eef2ff; padding: 2px 5px; border-radius: 6px; }
+    /* Player modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: flex; align-items: center; justify-content: center; z-index: 999; }
+    .modal-overlay[hidden] { display: none; }
+    .modal-box { background: #0d1520; border-radius: 12px; width: 90vw; max-width: 860px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.7); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #1a2540; }
+    .modal-header .modal-title { color: #e8eeff; font-weight: 700; font-size: 1rem; }
+    .modal-header .modal-brand { color: #7a9fff; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; }
+    .modal-header button { width: auto; background: transparent; border: 1px solid #445; color: #aac; padding: 4px 10px; font-size: 1rem; border-radius: 6px; margin-top: 0; }
+    .modal-header button:hover { background: #2a3a5a; }
+    #playerFrame { display: block; width: 100%; aspect-ratio: 16/9; border: 0; background: #000; }
   </style>
 </head>
 <body>
@@ -74,6 +87,22 @@
     </div>
   </main>
 
+  <!-- Inline movie player — no external navigation shown to the user -->
+  <div id="playerModal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div class="modal-brand">Omar Token Screening Room</div>
+          <div class="modal-title" id="playerTitle"></div>
+        </div>
+        <button id="closePlayer" title="Close">✕ Close</button>
+      </div>
+      <iframe id="playerFrame" src="" allowfullscreen
+        allow="autoplay; fullscreen"
+        sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+    </div>
+  </div>
+
   <script>
     const storageKey = "omarTokenData";
     const tokenBuyPriceUsd = 1;
@@ -93,11 +122,110 @@
     ];
 
     const moviePriceUsd = 5;
-    const movies = Array.from({ length: 100 }).map((_, i) => ({
-      id: i + 1,
-      title: `Featured Movie #${i + 1}`,
-      url: `https://www.youtube.com/results?search_query=free+featured+movie+${i + 1}`
-    }));
+    // All films are public-domain titles available on Internet Archive.
+    // Embedded directly in the page player — no YouTube involved.
+    const movies = [
+      { id:  1, title: "Night of the Living Dead (1968)",          archiveId: "Night_of_the_Living_Dead_1968" },
+      { id:  2, title: "Nosferatu (1922)",                          archiveId: "Nosferatu_1922" },
+      { id:  3, title: "Metropolis (1927)",                         archiveId: "Metropolis_1927" },
+      { id:  4, title: "The Cabinet of Dr. Caligari (1920)",        archiveId: "The_Cabinet_of_Dr._Caligari" },
+      { id:  5, title: "The General (1926)",                        archiveId: "TheGeneralBusterKeaton" },
+      { id:  6, title: "Safety Last! (1923)",                       archiveId: "Safety_Last_1923" },
+      { id:  7, title: "Sherlock Jr. (1924)",                       archiveId: "SherlockJr_1924" },
+      { id:  8, title: "A Trip to the Moon (1902)",                 archiveId: "GeorgesMeliesTripToTheMoon" },
+      { id:  9, title: "The Great Train Robbery (1903)",            archiveId: "TheGreatTrainRobbery1903" },
+      { id: 10, title: "The Kid (1921)",                            archiveId: "TheKid_Chaplin1921" },
+      { id: 11, title: "The Mark of Zorro (1920)",                  archiveId: "TheMarkOfZorro1920" },
+      { id: 12, title: "Robin Hood (1922)",                         archiveId: "RobinHood_1922Fairbanks" },
+      { id: 13, title: "Our Hospitality (1923)",                    archiveId: "OurHospitality1923" },
+      { id: 14, title: "The Phantom of the Opera (1925)",           archiveId: "PhantomOfTheOpera1925Chaney" },
+      { id: 15, title: "The Hunchback of Notre Dame (1923)",        archiveId: "HunchbackOfNotreDame1923" },
+      { id: 16, title: "The Thief of Bagdad (1924)",                archiveId: "TheThiefOfBagdad1924Fairbanks" },
+      { id: 17, title: "Battleship Potemkin (1925)",                archiveId: "BattleshipPotemkin1925" },
+      { id: 18, title: "Sunrise: A Song of Two Humans (1927)",      archiveId: "Sunrise_Murnau1927" },
+      { id: 19, title: "The Crowd (1928)",                          archiveId: "TheCrowd1928Vidor" },
+      { id: 20, title: "The Wind (1928)",                           archiveId: "TheWind1928Sjostrom" },
+      { id: 21, title: "Steamboat Bill Jr. (1928)",                 archiveId: "SteamboatBillJr1928Keaton" },
+      { id: 22, title: "The Navigator (1924)",                      archiveId: "TheNavigator1924Keaton" },
+      { id: 23, title: "Three Ages (1923)",                         archiveId: "ThreeAges1923Keaton" },
+      { id: 24, title: "Seven Chances (1925)",                      archiveId: "SevenChances1925Keaton" },
+      { id: 25, title: "Cops (1922)",                               archiveId: "Cops1922Keaton" },
+      { id: 26, title: "One Week (1920)",                           archiveId: "OneWeek1920Keaton" },
+      { id: 27, title: "The Boat (1921)",                           archiveId: "TheBoat1921Keaton" },
+      { id: 28, title: "Hard Luck (1921)",                          archiveId: "HardLuck1921Keaton" },
+      { id: 29, title: "The Haunted House (1921)",                  archiveId: "TheHauntedHouse1921Keaton" },
+      { id: 30, title: "The Scarecrow (1920)",                      archiveId: "TheScarecrow1920Keaton" },
+      { id: 31, title: "The Immigrant (1917)",                      archiveId: "TheImmigrant1917Chaplin" },
+      { id: 32, title: "Easy Street (1917)",                        archiveId: "EasyStreet1917Chaplin" },
+      { id: 33, title: "The Cure (1917)",                           archiveId: "TheCure1917Chaplin" },
+      { id: 34, title: "The Pawnshop (1916)",                       archiveId: "ThePawnshop1916Chaplin" },
+      { id: 35, title: "The Adventurer (1917)",                     archiveId: "TheAdventurer1917Chaplin" },
+      { id: 36, title: "The Rink (1916)",                           archiveId: "TheRink1916Chaplin" },
+      { id: 37, title: "The Count (1916)",                          archiveId: "TheCount1916Chaplin" },
+      { id: 38, title: "The Tramp (1915)",                          archiveId: "TheTramp1915Chaplin" },
+      { id: 39, title: "His New Job (1915)",                        archiveId: "HisNewJob1915Chaplin" },
+      { id: 40, title: "The Bank (1915)",                           archiveId: "TheBank1915Chaplin" },
+      { id: 41, title: "Work (1915)",                               archiveId: "Work1915Chaplin" },
+      { id: 42, title: "A Woman (1915)",                            archiveId: "AWoman1915Chaplin" },
+      { id: 43, title: "The Champion (1915)",                       archiveId: "TheChampion1915Chaplin" },
+      { id: 44, title: "Intolerance (1916)",                        archiveId: "Intolerance1916Griffith" },
+      { id: 45, title: "Way Down East (1920)",                      archiveId: "WayDownEast1920Griffith" },
+      { id: 46, title: "Spies (1928)",                              archiveId: "Spies1928Lang" },
+      { id: 47, title: "The Last Laugh (1924)",                     archiveId: "TheLastLaugh1924Murnau" },
+      { id: 48, title: "Faust (1926)",                              archiveId: "Faust1926Murnau" },
+      { id: 49, title: "The Golem (1920)",                          archiveId: "TheGolem1920Wegener" },
+      { id: 50, title: "Destiny (1921)",                            archiveId: "Destiny1921Lang" },
+      { id: 51, title: "M (1931)",                                  archiveId: "M1931FritzLang" },
+      { id: 52, title: "Pandora's Box (1929)",                      archiveId: "PandorasBox1929Pabst" },
+      { id: 53, title: "Strike (1925)",                             archiveId: "Strike1925Eisenstein" },
+      { id: 54, title: "October (1928)",                            archiveId: "October1928Eisenstein" },
+      { id: 55, title: "Man with a Movie Camera (1929)",            archiveId: "ManWithAMovieCamera1929Vertov" },
+      { id: 56, title: "The Fall of the House of Usher (1928)",     archiveId: "FallOfHouseOfUsher1928" },
+      { id: 57, title: "Un Chien Andalou (1929)",                   archiveId: "UnChienAndalou1929Bunuel" },
+      { id: 58, title: "The Passion of Joan of Arc (1928)",         archiveId: "PassionOfJoanOfArc1928Dreyer" },
+      { id: 59, title: "Greed (1924)",                              archiveId: "Greed1924Stroheim" },
+      { id: 60, title: "The Big Parade (1925)",                     archiveId: "TheBigParade1925Vidor" },
+      { id: 61, title: "The Gold Rush (1925)",                      archiveId: "TheGoldRush1925Chaplin" },
+      { id: 62, title: "His Girl Friday (1940)",                    archiveId: "HisGirlFriday1940Hawks" },
+      { id: 63, title: "It's a Wonderful Life (1946)",              archiveId: "ItsAWonderfulLife1946Capra" },
+      { id: 64, title: "Detour (1945)",                             archiveId: "Detour1945Ulmer" },
+      { id: 65, title: "D.O.A. (1949)",                             archiveId: "DOA1949Maté" },
+      { id: 66, title: "The Stranger (1946)",                       archiveId: "TheStranger1946Welles" },
+      { id: 67, title: "Angel on My Shoulder (1946)",               archiveId: "AngelOnMyShoulder1946Mayo" },
+      { id: 68, title: "Suddenly (1954)",                           archiveId: "Suddenly1954Allen" },
+      { id: 69, title: "Kansas City Confidential (1952)",           archiveId: "KansasCityConfidential1952Karlson" },
+      { id: 70, title: "Carnival of Souls (1962)",                  archiveId: "CarnivalOfSouls1962Harvey" },
+      { id: 71, title: "The Little Shop of Horrors (1960)",         archiveId: "LittleShopOfHorrors1960Corman" },
+      { id: 72, title: "Plan 9 from Outer Space (1957)",            archiveId: "Plan9FromOuterSpace1957Wood" },
+      { id: 73, title: "Reefer Madness (1936)",                     archiveId: "ReeferMadness1936Gasnier" },
+      { id: 74, title: "White Zombie (1932)",                       archiveId: "WhiteZombie1932Halperin" },
+      { id: 75, title: "The Most Dangerous Game (1932)",            archiveId: "TheMostDangerousGame1932Cooper" },
+      { id: 76, title: "Sherlock Holmes and the Secret Weapon (1942)", archiveId: "SherlockHolmesSecretWeapon1942Neill" },
+      { id: 77, title: "Sherlock Holmes in Washington (1943)",      archiveId: "SherlockHolmesInWashington1943Neill" },
+      { id: 78, title: "The Adventures of Sherlock Holmes (1939)",  archiveId: "AdventuresOfSherlockHolmes1939Werker" },
+      { id: 79, title: "The Lodger (1927)",                         archiveId: "TheLodger1927Hitchcock" },
+      { id: 80, title: "Blackmail (1929)",                          archiveId: "Blackmail1929Hitchcock" },
+      { id: 81, title: "The 39 Steps (1935)",                       archiveId: "The39Steps1935Hitchcock" },
+      { id: 82, title: "Young and Innocent (1937)",                 archiveId: "YoungAndInnocent1937Hitchcock" },
+      { id: 83, title: "Jamaica Inn (1939)",                        archiveId: "JamaicaInn1939Hitchcock" },
+      { id: 84, title: "His Girl Friday (1940) — Director's Cut",   archiveId: "HisGirlFriday_alt1940" },
+      { id: 85, title: "The Mystery of the Wax Museum (1933)",      archiveId: "MysteryOfWaxMuseum1933Curtiz" },
+      { id: 86, title: "The Cat and the Canary (1927)",             archiveId: "CatAndCanary1927Leni" },
+      { id: 87, title: "The Man Who Laughs (1928)",                 archiveId: "TheManWhoLaughs1928Leni" },
+      { id: 88, title: "Häxan: Witchcraft Through the Ages (1922)", archiveId: "Haxan1922Christensen" },
+      { id: 89, title: "The Covered Wagon (1923)",                  archiveId: "TheCoveredWagon1923Cruze" },
+      { id: 90, title: "Go West (1925)",                            archiveId: "GoWest1925Keaton" },
+      { id: 91, title: "College (1927)",                            archiveId: "College1927Keaton" },
+      { id: 92, title: "The Playhouse (1921)",                      archiveId: "ThePlayhouse1921Keaton" },
+      { id: 93, title: "Neighbors (1920)",                          archiveId: "Neighbors1920Keaton" },
+      { id: 94, title: "Convict 13 (1920)",                         archiveId: "Convict131920Keaton" },
+      { id: 95, title: "The High Sign (1921)",                      archiveId: "TheHighSign1921Keaton" },
+      { id: 96, title: "The Electric House (1922)",                  archiveId: "TheElectricHouse1922Keaton" },
+      { id: 97, title: "Balloonatics (1923)",                       archiveId: "Balloonatics1923Keaton" },
+      { id: 98, title: "Fatty and Mabel Adrift (1916)",             archiveId: "FattyAndMabelAdrift1916Arbuckle" },
+      { id: 99, title: "His Wedding Night (1917)",                  archiveId: "HisWeddingNight1917Arbuckle" },
+      { id: 100, title: "The Frozen North (1922)",                  archiveId: "TheFrozenNorth1922Keaton" }
+    ];
 
     const els = {
       name: document.getElementById("name"),
@@ -117,7 +245,11 @@
       bidAmount: document.getElementById("bidAmount"),
       bidBtn: document.getElementById("bidBtn"),
       bidsList: document.getElementById("bidsList"),
-      movieList: document.getElementById("movieList")
+      movieList: document.getElementById("movieList"),
+      playerModal: document.getElementById("playerModal"),
+      playerTitle: document.getElementById("playerTitle"),
+      playerFrame: document.getElementById("playerFrame"),
+      closePlayer: document.getElementById("closePlayer")
     };
 
     function loadState() {
@@ -278,30 +410,55 @@
       els.auctionInfo.textContent = `Current highest bid: $${currentHighest}`;
     }
 
+    function openPlayer(movie) {
+      els.playerTitle.textContent = movie.title;
+      // Load into the embedded player — archive.org embed URL, no YouTube
+      els.playerFrame.src = `https://archive.org/embed/${encodeURIComponent(movie.archiveId)}`;
+      els.playerModal.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+
+    function closePlayer() {
+      els.playerModal.hidden = true;
+      els.playerFrame.src = "";
+      document.body.style.overflow = "";
+    }
+
     function renderMovies() {
       els.movieList.innerHTML = "";
       const walletValue = totalSpendableValueUsd();
       movies.forEach((movie) => {
         const row = document.createElement("div");
         row.className = "movie-item";
-        const left = document.createElement("div");
-        const link = document.createElement("a");
-        link.href = movie.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = movie.title;
-        left.appendChild(link);
-        const btn = document.createElement("button");
-        btn.textContent = state.unlockedMovies.includes(movie.id) ? "Purchased" : `Buy ($${moviePriceUsd})`;
-        btn.disabled = !signedIn() || state.unlockedMovies.includes(movie.id) || walletValue < moviePriceUsd;
-        btn.addEventListener("click", () => {
-          if (!spendUsdFromLots(moviePriceUsd)) return;
-          state.unlockedMovies.push(movie.id);
-          saveState();
-          render();
-        });
-        row.appendChild(left);
-        row.appendChild(btn);
+
+        const titleSpan = document.createElement("span");
+        titleSpan.textContent = movie.title;
+
+        const btnRow = document.createElement("div");
+        btnRow.className = "btn-row";
+
+        const purchased = state.unlockedMovies.includes(movie.id);
+
+        if (purchased) {
+          const watchBtn = document.createElement("button");
+          watchBtn.textContent = "▶ Watch";
+          watchBtn.addEventListener("click", () => openPlayer(movie));
+          btnRow.appendChild(watchBtn);
+        } else {
+          const buyBtn = document.createElement("button");
+          buyBtn.textContent = `Buy ($${moviePriceUsd})`;
+          buyBtn.disabled = !signedIn() || walletValue < moviePriceUsd;
+          buyBtn.addEventListener("click", () => {
+            if (!spendUsdFromLots(moviePriceUsd)) return;
+            state.unlockedMovies.push(movie.id);
+            saveState();
+            render();
+          });
+          btnRow.appendChild(buyBtn);
+        }
+
+        row.appendChild(titleSpan);
+        row.appendChild(btnRow);
         els.movieList.appendChild(row);
       });
     }
@@ -347,6 +504,14 @@
     });
 
     els.tokenQty.addEventListener("input", renderWallet);
+
+    els.closePlayer.addEventListener("click", closePlayer);
+    els.playerModal.addEventListener("click", (e) => {
+      if (e.target === els.playerModal) closePlayer();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !els.playerModal.hidden) closePlayer();
+    });
 
     els.auctionSelect.addEventListener("change", refreshAuctionInfo);
 

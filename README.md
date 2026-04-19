@@ -7,8 +7,8 @@ Minimal single-page demo for a personal auction token:
 - Token spend value grows over time (about +$1/day based on days since token purchase)
 - Buyers submit a PayPal payment request in this demo flow (proof upload is not implemented)
 - Token requests are approved after 24 hours
-- 100 movie catalog entries are sourced from free YouTube listings
-- Each movie purchase is charged at $5
+- 100 public-domain film entries sourced from Internet Archive (archive.org)
+- Films play inline in a custom-branded page player — no YouTube, no external navigation
 - Spending supports decimal token amounts so users can receive value as change
 - Auction listing supports bidder sign-up and bidding
 
