@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omar Resonance Catalyst — Atomic Oracle</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color-scheme: light; }
+    body { margin: 0; background: #f5f7fb; color: #162033; }
+    main { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    h1, h2 { margin: 0 0 8px; }
+    .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.08); padding: 14px; }
+    label { display: block; font-weight: 600; margin: 8px 0 4px; }
+    input, select, button { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ccd4e2; box-sizing: border-box; }
+    button { border: 0; background: #2f63ff; color: #fff; font-weight: 700; cursor: pointer; margin-top: 8px; }
+    button.secondary { background: #5a6475; }
+    button:disabled { background: #97a0b1; cursor: not-allowed; }
+    ul { margin: 8px 0 0; padding-left: 18px; max-height: 220px; overflow: auto; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 20px; background: #e8eeff; color: #123; font-weight: 700; }
+    .hint { font-size: 0.9rem; color: #3d4961; }
+    .movie-list { max-height: 300px; overflow: auto; border: 1px solid #e3e8f2; border-radius: 8px; padding: 8px; }
+    .movie-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .movie-item span { flex: 1; font-size: 0.95rem; }
+    .movie-item .btn-row { display: flex; gap: 6px; flex-shrink: 0; }
+    .movie-item .btn-row button { width: auto; margin-top: 0; padding: 5px 12px; font-size: 0.85rem; }
+    a { color: #2f63ff; }
+    code { background: #eef2ff; padding: 2px 5px; border-radius: 6px; }
+    /* Player modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: flex; align-items: center; justify-content: center; z-index: 999; }
+    .modal-overlay[hidden] { display: none; }
+    .modal-box { background: #0d1520; border-radius: 12px; width: 90vw; max-width: 860px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.7); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #1a2540; }
+    .modal-header .modal-title { color: #e8eeff; font-weight: 700; font-size: 1rem; }
+    .modal-header .modal-brand { color: #7a9fff; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; }
+    .modal-header button { width: auto; background: transparent; border: 1px solid #445; color: #aac; padding: 4px 10px; font-size: 1rem; border-radius: 6px; margin-top: 0; }
+    .modal-header button:hover { background: #2a3a5a; }
+    #playerFrame { display: block; width: 100%; aspect-ratio: 16/9; border: 0; background: #000; }
+    /* Resonance level filter bar */
+    .level-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .level-btn { width: auto; margin-top: 0; padding: 4px 10px; font-size: 0.78rem; border-radius: 20px; border: 2px solid transparent; cursor: pointer; font-weight: 700; }
+    .level-btn.active { border-color: #162033; box-shadow: 0 0 0 2px rgba(22,32,51,0.35); }
+    /* Element badge on each movie row */
+    .elem-badge { display: inline-block; font-size: 0.68rem; font-weight: 800; padding: 1px 5px; border-radius: 4px; margin-right: 5px; vertical-align: middle; line-height: 1.5; }
+    /* Live-fetch bar */
+    .fetch-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .fetch-bar button { width: auto; margin-top: 0; padding: 5px 14px; font-size: 0.85rem; }
+    /* Leyden Jar — Resonance Chamber */
+    .resonance-chamber { text-align: center; }
+    .leyden-jar { display: flex; align-items: center; justify-content: center; padding: 24px 0 14px; }
+    .node { width: 110px; height: 110px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    .node-xenon { background: radial-gradient(circle, #fff9d0 0%, #f5c518 50%, #e8a800 100%); box-shadow: 0 0 28px #f5c51888, 0 0 56px #f5c51844; animation: xe-pulse 2.5s ease-in-out infinite; }
+    .node-iodine { background: radial-gradient(circle, #f0e8ff 0%, #a06ad4 50%, #7a3fb0 100%); box-shadow: 0 0 8px #a06ad422; transition: box-shadow 0.6s, transform 0.6s; }
+    .node-iodine.awake { box-shadow: 0 0 28px #a06ad488, 0 0 56px #a06ad444; animation: i-pulse 1s ease-in-out infinite; }
+    .node-symbol { font-size: 2rem; font-weight: 900; color: #162033; line-height: 1; }
+    .node-num { font-size: 0.85rem; font-weight: 700; color: #162033; }
+    .node-state { font-size: 0.58rem; font-weight: 600; color: #3d4961; letter-spacing: 0.06em; margin-top: 3px; }
+    .node-gap { display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; overflow: visible; position: relative; flex-shrink: 0; }
+    .gap-sparks { font-size: 1.3rem; opacity: 0; transition: opacity 0.3s; }
+    .gap-sparks.visible { opacity: 1; animation: spark-flicker 0.35s ease-in-out infinite; }
+    @keyframes xe-pulse { 0%,100% { box-shadow: 0 0 28px #f5c51888, 0 0 56px #f5c51844; } 50% { box-shadow: 0 0 44px #f5c518cc, 0 0 88px #f5c51866; } }
+    @keyframes i-pulse { 0%,100% { box-shadow: 0 0 28px #a06ad488, 0 0 56px #a06ad444; } 50% { box-shadow: 0 0 48px #a06ad4cc, 0 0 96px #a06ad466; transform: scale(1.04); } }
+    @keyframes spark-flicker { 0%,100% { opacity: 0.5; transform: scaleX(1); } 50% { opacity: 1; transform: scaleX(1.3); } }
+    .chain-ladder { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 12px; }
+    .chain-card { border: 2px solid #ccd4e2; border-radius: 10px; padding: 10px 18px; cursor: pointer; min-width: 110px; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; }
+    .chain-card:hover { border-color: #7a9fff; }
+    .chain-card.selected { border-color: #2f63ff; box-shadow: 0 0 0 2px #2f63ff44; }
+    .chain-cost { font-size: 1.05rem; font-weight: 900; color: #2f63ff; }
+    .chain-label { font-size: 0.75rem; font-weight: 700; color: #162033; margin: 3px 0 1px; }
+    .chain-desc { font-size: 0.67rem; color: #5a6475; }
+    .resonance-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0; }
+    .resonance-controls button { width: auto; margin-top: 0; padding: 9px 24px; }
+    .tone-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .tone-bar button { width: auto; margin-top: 0; padding: 4px 14px; font-size: 0.78rem; }
+    /* Atomic Oracle — pair selector dial */
+    .pair-selector { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .pair-card { border: 2px solid #ccd4e2; border-radius: 10px; padding: 10px 14px; cursor: pointer; min-width: 105px; text-align: center; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; }
+    .pair-card:hover { border-color: #7a9fff; }
+    .pair-card.selected { border-color: #2f63ff; box-shadow: 0 0 0 2px #2f63ff44; background: #f0f5ff; }
+    .pair-nums { font-size: 1.3rem; font-weight: 900; color: #162033; line-height: 1.2; }
+    .pair-arrow { font-size: 0.85rem; margin: 0 1px; color: #5a6475; }
+    .pair-symbols { font-size: 0.82rem; font-weight: 700; color: #3d4961; margin: 2px 0 1px; }
+    .pair-intent { font-size: 0.65rem; color: #5a6475; }
+    .pair-mincost { font-size: 0.68rem; color: #2f63ff; font-weight: 700; margin-top: 3px; }
+    /* Dynamic node classes (colors set via JS inline style) */
+    .node-from { animation: node-from-glow 2.5s ease-in-out infinite; }
+    .node-to { transition: box-shadow 0.6s, transform 0.6s; }
+    .node-to.awake { animation: node-to-pulse 1s ease-in-out infinite; }
+    @keyframes node-from-glow { 0%,100% { filter: brightness(1);   } 50% { filter: brightness(1.25); } }
+    @keyframes node-to-pulse  { 0%,100% { transform: scale(1);     } 50% { transform: scale(1.05);   } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Omar Resonance Catalyst</h1>
+    <p class="hint">Personal resonance catalyst for auctions and movie purchases.</p>
+    <div class="grid">
+      <section class="card">
+        <h2>Sign In</h2>
+        <div id="currentUser" class="hint">Not signed in.</div>
+        <label for="name">Display Name</label>
+        <input id="name" placeholder="Your name" />
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@email.com" />
+        <button id="signInBtn">Sign In</button>
+      </section>
+
+      <section class="card">
+        <h2>Resonance Catalyst Wallet</h2>
+        <div>Buy price per Catalyst: <span class="pill">$1</span></div>
+        <div>Spendable wallet value: <span id="walletValue" class="pill">$0.00</span></div>
+        <p class="hint">Each Resonance Catalyst gains ~$1/day in spend value from purchase. Spend Catalysts to unlock films or discharge Resonance Events.</p>
+        <div>Available Catalysts (decimals supported): <span id="walletTokens" class="pill">0</span></div>
+        <label for="tokenQty">Catalysts requested after PayPal payment ($1 each)</label>
+        <input id="tokenQty" type="number" min="0.01" step="0.01" value="1" />
+        <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
+        <button id="requestTokensBtn">Submit Payment Request</button>
+        <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request Catalysts. Approval happens after 24h.</div>
+        <div id="actionStatus" class="hint"></div>
+        <ul id="requestsList"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Auction Listing</h2>
+        <label for="auctionSelect">Auction Item</label>
+        <select id="auctionSelect"></select>
+        <div id="auctionInfo" class="hint"></div>
+        <label for="bidAmount">Bid Amount (USD)</label>
+        <input id="bidAmount" type="number" min="1" value="1" />
+        <button id="bidBtn">Sign Up & Place Bid</button>
+        <ul id="bidsList"></ul>
+      </section>
+
+      <!-- Leyden Jar: 54/53 Resonance Chamber -->
+      <section class="card resonance-chamber" style="grid-column: 1/-1;">
+        <h2>The Atomic Oracle — Resonance Pair Chamber</h2>
+        <p class="hint">Select a resonance pair, choose your chain depth, then discharge. Higher atomic weight = rarer content = more Catalysts required.</p>
+        <div class="pair-selector" id="pairSelector"></div>
+        <div class="leyden-jar">
+          <div class="node node-from" id="nodeFrom">
+            <div class="node-symbol" id="fromSymbol">Xe</div>
+            <div class="node-num" id="fromNum">54</div>
+            <div class="node-state">HIGH ENERGY</div>
+          </div>
+          <div class="node-gap" id="nodeGap">
+            <div class="gap-sparks" id="gapSparks">&#x26A1;</div>
+          </div>
+          <div class="node node-to" id="nodeTo">
+            <div class="node-symbol" id="toSymbol">I</div>
+            <div class="node-num" id="toNum">53</div>
+            <div class="node-state" id="toState">DORMANT</div>
+          </div>
+        </div>
+        <div class="chain-ladder" id="chainLadder"></div>
+        <div class="resonance-controls" id="resonanceControls"></div>
+        <div id="resonanceStatus" class="hint" style="min-height:1.4em;text-align:center;"></div>
+        <div class="tone-bar">
+          <button id="audioToggle" class="secondary">&#x1F507; Iodine Tone: Off</button>
+          <span class="hint" style="font-size:0.72rem;">~33.2 Hz &mdash; I-127 principal line, 44 octaves down</span>
+        </div>
+      </section>
+
+      <section class="card" style="grid-column: 1/-1;">
+        <h2>Resonance Archive — Movie Catalog</h2>
+        <p class="hint">Each movie purchase charges $5. Filter by resonance level or fetch additional public-domain titles live from Internet Archive.</p>
+        <div class="level-filter" id="levelFilter"></div>
+        <div class="fetch-bar">
+          <button id="fetchBtn" class="secondary">⬇ Live Fetch from Archive</button>
+          <span id="fetchStatus" class="hint"></span>
+        </div>
+        <div class="movie-list" id="movieList"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Inline movie player — no external navigation shown to the user -->
+  <div id="playerModal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div class="modal-brand">Omar Resonance Catalyst — Resonance Event</div>
+          <div class="modal-title" id="playerTitle"></div>
+        </div>
+        <button id="closePlayer" title="Close">✕ Close</button>
+      </div>
+      <iframe id="playerFrame" src="" allowfullscreen
+        allow="autoplay; fullscreen"
+        sandbox="allow-scripts allow-forms allow-presentation"></iframe>
+    </div>
+  </div>
+
+  <script>
+    const storageKey = "omarTokenData";
+    const tokenBuyPriceUsd = 1;
+    const MS_PER_DAY = 86400000;
+    const FLOAT_EPSILON = 0.000001;
+    const MIN_TOKEN_QUANTITY = 0.01;
+    const MAX_TOKEN_QUANTITY = 100000;
+    const MIN_BID_INCREMENT_USD = 1;
+    const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
+    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "seller@example.com";
+    const state = loadState();
+
+    const auctions = [
+      { id: "coin-set-1881", item: "1881 Morgan Silver Dollar", highestBid: 30 },
+      { id: "coin-set-1909", item: "1909 Wheat Penny", highestBid: 12 },
+      { id: "coin-set-1916", item: "1916 Mercury Dime", highestBid: 18 }
+    ];
+
+    const moviePriceUsd = 5;
+    // All films are public-domain titles available on Internet Archive.
+    // Embedded directly in the page player — no YouTube involved.
+    const movies = [
+      { id:  1, title: "Night of the Living Dead (1968)",          archiveId: "Night_of_the_Living_Dead_1968" },
+      { id:  2, title: "Nosferatu (1922)",                          archiveId: "Nosferatu_1922" },
+      { id:  3, title: "Metropolis (1927)",                         archiveId: "Metropolis_1927" },
+      { id:  4, title: "The Cabinet of Dr. Caligari (1920)",        archiveId: "The_Cabinet_of_Dr._Caligari" },
+      { id:  5, title: "The General (1926)",                        archiveId: "TheGeneralBusterKeaton" },
+      { id:  6, title: "Safety Last! (1923)",                       archiveId: "Safety_Last_1923" },
+      { id:  7, title: "Sherlock Jr. (1924)",                       archiveId: "SherlockJr_1924" },
+      { id:  8, title: "A Trip to the Moon (1902)",                 archiveId: "GeorgesMeliesTripToTheMoon" },
+      { id:  9, title: "The Great Train Robbery (1903)",            archiveId: "TheGreatTrainRobbery1903" },
+      { id: 10, title: "The Kid (1921)",                            archiveId: "TheKid_Chaplin1921" },
+      { id: 11, title: "The Mark of Zorro (1920)",                  archiveId: "TheMarkOfZorro1920" },
+      { id: 12, title: "Robin Hood (1922)",                         archiveId: "RobinHood_1922Fairbanks" },
+      { id: 13, title: "Our Hospitality (1923)",                    archiveId: "OurHospitality1923" },
+      { id: 14, title: "The Phantom of the Opera (1925)",           archiveId: "PhantomOfTheOpera1925Chaney" },
+      { id: 15, title: "The Hunchback of Notre Dame (1923)",        archiveId: "HunchbackOfNotreDame1923" },
+      { id: 16, title: "The Thief of Bagdad (1924)",                archiveId: "TheThiefOfBagdad1924Fairbanks" },
+      { id: 17, title: "Battleship Potemkin (1925)",                archiveId: "BattleshipPotemkin1925" },
+      { id: 18, title: "Sunrise: A Song of Two Humans (1927)",      archiveId: "Sunrise_Murnau1927" },
+      { id: 19, title: "The Crowd (1928)",                          archiveId: "TheCrowd1928Vidor" },
+      { id: 20, title: "The Wind (1928)",                           archiveId: "TheWind1928Sjostrom" },
+      { id: 21, title: "Steamboat Bill Jr. (1928)",                 archiveId: "SteamboatBillJr1928Keaton" },
+      { id: 22, title: "The Navigator (1924)",                      archiveId: "TheNavigator1924Keaton" },
+      { id: 23, title: "Three Ages (1923)",                         archiveId: "ThreeAges1923Keaton" },
+      { id: 24, title: "Seven Chances (1925)",                      archiveId: "SevenChances1925Keaton" },
+      { id: 25, title: "Cops (1922)",                               archiveId: "Cops1922Keaton" },
+      { id: 26, title: "One Week (1920)",                           archiveId: "OneWeek1920Keaton" },
+      { id: 27, title: "The Boat (1921)",                           archiveId: "TheBoat1921Keaton" },
+      { id: 28, title: "Hard Luck (1921)",                          archiveId: "HardLuck1921Keaton" },
+      { id: 29, title: "The Haunted House (1921)",                  archiveId: "TheHauntedHouse1921Keaton" },
+      { id: 30, title: "The Scarecrow (1920)",                      archiveId: "TheScarecrow1920Keaton" },
+      { id: 31, title: "The Immigrant (1917)",                      archiveId: "TheImmigrant1917Chaplin" },
+      { id: 32, title: "Easy Street (1917)",                        archiveId: "EasyStreet1917Chaplin" },
+      { id: 33, title: "The Cure (1917)",                           archiveId: "TheCure1917Chaplin" },
+      { id: 34, title: "The Pawnshop (1916)",                       archiveId: "ThePawnshop1916Chaplin" },
+      { id: 35, title: "The Adventurer (1917)",                     archiveId: "TheAdventurer1917Chaplin" },
+      { id: 36, title: "The Rink (1916)",                           archiveId: "TheRink1916Chaplin" },
+      { id: 37, title: "The Count (1916)",                          archiveId: "TheCount1916Chaplin" },
+      { id: 38, title: "The Tramp (1915)",                          archiveId: "TheTramp1915Chaplin" },
+      { id: 39, title: "His New Job (1915)",                        archiveId: "HisNewJob1915Chaplin" },
+      { id: 40, title: "The Bank (1915)",                           archiveId: "TheBank1915Chaplin" },
+      { id: 41, title: "Work (1915)",                               archiveId: "Work1915Chaplin" },
+      { id: 42, title: "A Woman (1915)",                            archiveId: "AWoman1915Chaplin" },
+      { id: 43, title: "The Champion (1915)",                       archiveId: "TheChampion1915Chaplin" },
+      { id: 44, title: "Intolerance (1916)",                        archiveId: "Intolerance1916Griffith" },
+      { id: 45, title: "Way Down East (1920)",                      archiveId: "WayDownEast1920Griffith" },
+      { id: 46, title: "Spies (1928)",                              archiveId: "Spies1928Lang" },
+      { id: 47, title: "The Last Laugh (1924)",                     archiveId: "TheLastLaugh1924Murnau" },
+      { id: 48, title: "Faust (1926)",                              archiveId: "Faust1926Murnau" },
+      { id: 49, title: "The Golem (1920)",                          archiveId: "TheGolem1920Wegener" },
+      { id: 50, title: "Destiny (1921)",                            archiveId: "Destiny1921Lang" },
+      { id: 51, title: "M (1931)",                                  archiveId: "M1931FritzLang" },
+      { id: 52, title: "Pandora's Box (1929)",                      archiveId: "PandorasBox1929Pabst" },
+      { id: 53, title: "Strike (1925)",                             archiveId: "Strike1925Eisenstein" },
+      { id: 54, title: "October (1928)",                            archiveId: "October1928Eisenstein" },
+      { id: 55, title: "Man with a Movie Camera (1929)",            archiveId: "ManWithAMovieCamera1929Vertov" },
+      { id: 56, title: "The Fall of the House of Usher (1928)",     archiveId: "FallOfHouseOfUsher1928" },
+      { id: 57, title: "Un Chien Andalou (1929)",                   archiveId: "UnChienAndalou1929Bunuel" },
+      { id: 58, title: "The Passion of Joan of Arc (1928)",         archiveId: "PassionOfJoanOfArc1928Dreyer" },
+      { id: 59, title: "Greed (1924)",                              archiveId: "Greed1924Stroheim" },
+      { id: 60, title: "The Big Parade (1925)",                     archiveId: "TheBigParade1925Vidor" },
+      { id: 61, title: "The Gold Rush (1925)",                      archiveId: "TheGoldRush1925Chaplin" },
+      { id: 62, title: "His Girl Friday (1940)",                    archiveId: "HisGirlFriday1940Hawks" },
+      { id: 63, title: "It's a Wonderful Life (1946)",              archiveId: "ItsAWonderfulLife1946Capra" },
+      { id: 64, title: "Detour (1945)",                             archiveId: "Detour1945Ulmer" },
+      { id: 65, title: "D.O.A. (1949)",                             archiveId: "DOA1949Maté" },
+      { id: 66, title: "The Stranger (1946)",                       archiveId: "TheStranger1946Welles" },
+      { id: 67, title: "Angel on My Shoulder (1946)",               archiveId: "AngelOnMyShoulder1946Mayo" },
+      { id: 68, title: "Suddenly (1954)",                           archiveId: "Suddenly1954Allen" },
+      { id: 69, title: "Kansas City Confidential (1952)",           archiveId: "KansasCityConfidential1952Karlson" },
+      { id: 70, title: "Carnival of Souls (1962)",                  archiveId: "CarnivalOfSouls1962Harvey" },
+      { id: 71, title: "The Little Shop of Horrors (1960)",         archiveId: "LittleShopOfHorrors1960Corman" },
+      { id: 72, title: "Plan 9 from Outer Space (1957)",            archiveId: "Plan9FromOuterSpace1957Wood" },
+      { id: 73, title: "Reefer Madness (1936)",                     archiveId: "ReeferMadness1936Gasnier" },
+      { id: 74, title: "White Zombie (1932)",                       archiveId: "WhiteZombie1932Halperin" },
+      { id: 75, title: "The Most Dangerous Game (1932)",            archiveId: "TheMostDangerousGame1932Cooper" },
+      { id: 76, title: "Sherlock Holmes and the Secret Weapon (1942)", archiveId: "SherlockHolmesSecretWeapon1942Neill" },
+      { id: 77, title: "Sherlock Holmes in Washington (1943)",      archiveId: "SherlockHolmesInWashington1943Neill" },
+      { id: 78, title: "The Adventures of Sherlock Holmes (1939)",  archiveId: "AdventuresOfSherlockHolmes1939Werker" },
+      { id: 79, title: "The Lodger (1927)",                         archiveId: "TheLodger1927Hitchcock" },
+      { id: 80, title: "Blackmail (1929)",                          archiveId: "Blackmail1929Hitchcock" },
+      { id: 81, title: "The 39 Steps (1935)",                       archiveId: "The39Steps1935Hitchcock" },
+      { id: 82, title: "Young and Innocent (1937)",                 archiveId: "YoungAndInnocent1937Hitchcock" },
+      { id: 83, title: "Jamaica Inn (1939)",                        archiveId: "JamaicaInn1939Hitchcock" },
+      { id: 84, title: "The Roaring Twenties (1939)",               archiveId: "TheRoaringTwenties1939Walsh" },
+      { id: 85, title: "The Mystery of the Wax Museum (1933)",      archiveId: "MysteryOfWaxMuseum1933Curtiz" },
+      { id: 86, title: "The Cat and the Canary (1927)",             archiveId: "CatAndCanary1927Leni" },
+      { id: 87, title: "The Man Who Laughs (1928)",                 archiveId: "TheManWhoLaughs1928Leni" },
+      { id: 88, title: "Häxan: Witchcraft Through the Ages (1922)", archiveId: "Haxan1922Christensen" },
+      { id: 89, title: "The Covered Wagon (1923)",                  archiveId: "TheCoveredWagon1923Cruze" },
+      { id: 90, title: "Go West (1925)",                            archiveId: "GoWest1925Keaton" },
+      { id: 91, title: "College (1927)",                            archiveId: "College1927Keaton" },
+      { id: 92, title: "The Playhouse (1921)",                      archiveId: "ThePlayhouse1921Keaton" },
+      { id: 93, title: "Neighbors (1920)",                          archiveId: "Neighbors1920Keaton" },
+      { id: 94, title: "Convict 13 (1920)",                         archiveId: "Convict131920Keaton" },
+      { id: 95, title: "The High Sign (1921)",                      archiveId: "TheHighSign1921Keaton" },
+      { id: 96, title: "The Electric House (1922)",                archiveId: "TheElectricHouse1922Keaton" },
+      { id: 97, title: "Balloonatics (1923)",                       archiveId: "Balloonatics1923Keaton" },
+      { id: 98, title: "Fatty and Mabel Adrift (1916)",             archiveId: "FattyAndMabelAdrift1916Arbuckle" },
+      { id: 99, title: "His Wedding Night (1917)",                  archiveId: "HisWeddingNight1917Arbuckle" },
+      { id: 100, title: "The Frozen North (1922)",                  archiveId: "TheFrozenNorth1922Keaton" }
+    ];
+
+    // ── Resonance Levels ─────────────────────────────────────────────────────
+    // Each level maps an element to a film era. Year is extracted from the
+    // title string so no separate "year" field is needed on each movie.
+    const resonanceLevels = [
+      { id: 1, symbol: "H",  name: "Hydrogen",  range: [0,    1910], desc: "Pioneer Era",         bg: "#f5c518", fg: "#111" },
+      { id: 2, symbol: "He", name: "Helium",    range: [1911, 1919], desc: "Silent Comedy",        bg: "#a3d8f4", fg: "#111" },
+      { id: 3, symbol: "Li", name: "Lithium",   range: [1920, 1922], desc: "Golden Silent",        bg: "#f4a3a3", fg: "#111" },
+      { id: 4, symbol: "Be", name: "Beryllium", range: [1923, 1924], desc: "Comedy Masters",       bg: "#a3f4b6", fg: "#111" },
+      { id: 5, symbol: "B",  name: "Boron",     range: [1925, 1929], desc: "Expressionism",        bg: "#f4c9a3", fg: "#111" },
+      { id: 6, symbol: "C",  name: "Carbon",    range: [1930, 1938], desc: "Pre-Code & Talkies",   bg: "#d4d4d4", fg: "#111" },
+      { id: 7, symbol: "N",  name: "Nitrogen",  range: [1939, 1944], desc: "Classic Hollywood",    bg: "#a3b8f4", fg: "#111" },
+      { id: 8, symbol: "O",  name: "Oxygen",    range: [1945, 1954], desc: "Film Noir",            bg: "#a3e6e6", fg: "#111" },
+      { id: 9, symbol: "F",  name: "Fluorine",  range: [1955, 9999], desc: "B-Movies & New Wave",  bg: "#d0a3f4", fg: "#111" }
+    ];
+
+    let currentLevelFilter = 0; // 0 = All levels
+    let liveMovies = [];         // Session-only titles fetched from Internet Archive
+
+    function extractYear(title) {
+      const m = title.match(/\((\d{4})\)/);
+      return m ? parseInt(m[1], 10) : 1900;
+    }
+
+    function movieLevel(year) {
+      return resonanceLevels.find(l => year >= l.range[0] && year <= l.range[1]) || resonanceLevels[8];
+    }
+
+    function allMovies() {
+      const existingIds = new Set(movies.map(m => m.archiveId));
+      return movies.concat(liveMovies.filter(m => !existingIds.has(m.archiveId)));
+    }
+
+    // ── Atomic Oracle — Resonance Pairs ──────────────────────────────────────
+    // Three atomic resonance pairs, each with a distinct intent, IA query,
+    // and chain-cost scale that rises with atomic weight of the source element.
+    const RESONANCE_PAIRS = [
+      {
+        from: { num: 9,  symbol: "F",  name: "Fluorine",
+                bg: "radial-gradient(circle,#ffd4bb 0%,#ff6b35 50%,#cc4400 100%)",
+                glow: "#ff6b3566" },
+        to:   { num: 8,  symbol: "O",  name: "Oxygen",
+                bg: "radial-gradient(circle,#c6fff9 0%,#4ecdc4 50%,#2aada4 100%)",
+                dormantShadow: "0 0 8px #4ecdc422",
+                awakeShadow:   "0 0 36px #4ecdc499, 0 0 70px #4ecdc444" },
+        intent: "Aggression / Shielding",
+        genre:  "Film Noir & Action",
+        chains: [
+          { cost: 1, label: "Standard", desc: "Noir Archive",
+            q: "subject:(film+noir)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 2, label: "Rare",     desc: "Mystery Field",
+            q: "subject:(mystery)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 3, label: "Deep",     desc: "Prelinger",
+            q: "collection:(prelinger)+AND+mediatype:(movies)" }
+        ]
+      },
+      {
+        from: { num: 54, symbol: "Xe", name: "Xenon",
+                bg: "radial-gradient(circle,#fff9d0 0%,#f5c518 50%,#e8a800 100%)",
+                glow: "#f5c51866" },
+        to:   { num: 53, symbol: "I",  name: "Iodine",
+                bg: "radial-gradient(circle,#f0e8ff 0%,#a06ad4 50%,#7a3fb0 100%)",
+                dormantShadow: "0 0 8px #a06ad422",
+                awakeShadow:   "0 0 36px #a06ad499, 0 0 70px #a06ad444" },
+        intent: "Protection / Shield",
+        genre:  "Sci-Fi & Documentaries",
+        chains: [
+          { cost: 2, label: "Standard", desc: "Sci-Fi Archive",
+            q: "collection:(publicmovies212)+AND+mediatype:(movies)" },
+          { cost: 4, label: "Rare",     desc: "Prelinger Sci",
+            q: "collection:(prelinger)+AND+mediatype:(movies)" },
+          { cost: 6, label: "Deep",     desc: "Deep Science",
+            q: "collection:(prelinger)+AND+mediatype:(movies)+AND+subject:(science)" }
+        ]
+      },
+      {
+        from: { num: 73, symbol: "Ta", name: "Tantalum",
+                bg: "radial-gradient(circle,#ffe0ea 0%,#ff8fab 50%,#dd5580 100%)",
+                glow: "#ff8fab66" },
+        to:   { num: 72, symbol: "Hf", name: "Hafnium",
+                bg: "radial-gradient(circle,#eedaff 0%,#c77dff 50%,#9e44d6 100%)",
+                dormantShadow: "0 0 8px #c77dff22",
+                awakeShadow:   "0 0 36px #c77dff99, 0 0 70px #c77dff44" },
+        intent: "Connection / Love",
+        genre:  "Romance & Human Stories",
+        chains: [
+          { cost: 3,  label: "Standard", desc: "Romance Archive",
+            q: "subject:(romance)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 6,  label: "Rare",     desc: "Human Drama",
+            q: "subject:(drama)+AND+mediatype:(movies)+AND+subject:(public+domain)" },
+          { cost: 10, label: "Deep",     desc: "Feature Films",
+            q: "collection:(feature_films)+AND+mediatype:(movies)" }
+        ]
+      }
+    ];
+
+    let hullResonance    = null; // null = stable (uncharged); set to activePair().to.num after discharge
+    let selectedPairIdx  = 1;    // default: 54↓53
+    let selectedChainIdx = 0;    // default: first (cheapest) chain
+    let resonanceMovie   = null;
+    let audioCtx         = null;
+    let audioEnabled     = false;
+    let dynamicIdCounter = 2000; // monotonically increasing ID for live-fetched and resonance movies
+
+    function activePair()  { return RESONANCE_PAIRS[selectedPairIdx]; }
+    function activeChain() { return activePair().chains[selectedChainIdx]; }
+
+    function renderPairSelector() {
+      const sel = document.getElementById("pairSelector");
+      if (!sel) return;
+      sel.innerHTML = "";
+      RESONANCE_PAIRS.forEach((pair, i) => {
+        const card = document.createElement("div");
+        card.className = "pair-card" + (selectedPairIdx === i ? " selected" : "");
+        card.innerHTML =
+          `<div class="pair-nums">${pair.from.num}<span class="pair-arrow">&#x2193;</span>${pair.to.num}</div>` +
+          `<div class="pair-symbols">${pair.from.symbol} &#x2192; ${pair.to.symbol}</div>` +
+          `<div class="pair-intent">${pair.intent}</div>` +
+          `<div class="pair-mincost">from ${pair.chains[0].cost} Catalyst${pair.chains[0].cost !== 1 ? "s" : ""}</div>`;
+        card.addEventListener("click", () => {
+          if (hullResonance !== null) return;
+          selectedPairIdx  = i;
+          selectedChainIdx = 0;
+          renderResonanceChamber();
+        });
+        sel.appendChild(card);
+      });
+    }
+
+    function renderChainLadder() {
+      const ladder = document.getElementById("chainLadder");
+      if (!ladder) return;
+      ladder.innerHTML = "";
+      activePair().chains.forEach((chain, i) => {
+        const card = document.createElement("div");
+        card.className = "chain-card" + (selectedChainIdx === i ? " selected" : "");
+        card.innerHTML =
+          `<div class="chain-cost">${"⚡".repeat(i + 1)} ${chain.cost} Catalyst${chain.cost !== 1 ? "s" : ""}</div>` +
+          `<div class="chain-label">${chain.label}</div>` +
+          `<div class="chain-desc">${chain.desc}</div>`;
+        card.addEventListener("click", () => {
+          if (hullResonance !== null) return;
+          selectedChainIdx = i;
+          renderResonanceChamber();
+        });
+        ladder.appendChild(card);
+      });
+    }
+
+    function renderResonanceChamber() {
+      renderPairSelector();
+      renderChainLadder();
+
+      const pair     = activePair();
+      const chain    = activeChain();
+      const isStable = hullResonance === null;
+
+      // Update "from" node appearance
+      const nodeFrom  = document.getElementById("nodeFrom");
+      const fromSym   = document.getElementById("fromSymbol");
+      const fromNum   = document.getElementById("fromNum");
+      if (nodeFrom) {
+        nodeFrom.style.background  = pair.from.bg;
+        nodeFrom.style.boxShadow   = `0 0 30px ${pair.from.glow}, 0 0 60px ${pair.from.glow}`;
+      }
+      if (fromSym) fromSym.textContent = pair.from.symbol;
+      if (fromNum) fromNum.textContent = pair.from.num;
+
+      // Update "to" node appearance
+      const nodeTo  = document.getElementById("nodeTo");
+      const toSym   = document.getElementById("toSymbol");
+      const toNum   = document.getElementById("toNum");
+      const toState = document.getElementById("toState");
+      if (nodeTo) {
+        nodeTo.style.background = pair.to.bg;
+        nodeTo.style.boxShadow  = isStable ? pair.to.dormantShadow : pair.to.awakeShadow;
+        nodeTo.className = "node node-to" + (isStable ? "" : " awake");
+      }
+      if (toSym)   toSym.textContent   = pair.to.symbol;
+      if (toNum)   toNum.textContent   = pair.to.num;
+      if (toState) toState.textContent = isStable ? "DORMANT" : "FIELD ACTIVE";
+
+      // Node gap
+      const gap    = document.getElementById("nodeGap");
+      const sparks = document.getElementById("gapSparks");
+      if (gap) {
+        const widths = ["80px", "40px", "10px"];
+        gap.style.width    = isStable ? (widths[selectedChainIdx] || "80px") : "0px";
+        gap.style.minWidth = gap.style.width;
+      }
+      if (sparks) {
+        sparks.className = "gap-sparks" + (isStable && selectedChainIdx === 2 ? " visible" : "");
+      }
+
+      // Controls
+      const controls = document.getElementById("resonanceControls");
+      if (!controls) return;
+      controls.innerHTML = "";
+
+      if (isStable) {
+        const walletVal = totalSpendableValueUsd();
+        const btn = document.createElement("button");
+        btn.innerHTML = `&#x26A1; Discharge &mdash; ${chain.cost} Catalyst${chain.cost !== 1 ? "s" : ""}`;
+        btn.disabled = !signedIn() || walletVal < chain.cost;
+        btn.addEventListener("click", downshift);
+        controls.appendChild(btn);
+        const hint = document.createElement("p");
+        hint.className = "hint";
+        hint.style.margin = "4px 0 0";
+        hint.textContent = `${pair.from.num}\u2193${pair.to.num}  \u00b7  ${pair.intent}  \u00b7  ${pair.genre}`;
+        controls.appendChild(hint);
+      } else {
+        if (resonanceMovie) {
+          const titleDiv = document.createElement("p");
+          titleDiv.style.cssText = "font-weight:700;margin:0 0 8px;font-size:1rem;";
+          titleDiv.textContent   = "\u26A1 " + resonanceMovie.title;
+          controls.appendChild(titleDiv);
+          const watchBtn = document.createElement("button");
+          watchBtn.textContent = "▶ Observe Resonance Event";
+          watchBtn.addEventListener("click", () => openPlayer(resonanceMovie));
+          controls.appendChild(watchBtn);
+        }
+        const reBtn = document.createElement("button");
+        reBtn.className     = "secondary";
+        reBtn.style.marginTop = "6px";
+        reBtn.textContent   = "\u2191 Restabilize Field";
+        reBtn.addEventListener("click", () => {
+          hullResonance  = null;
+          resonanceMovie = null;
+          const st = document.getElementById("resonanceStatus");
+          if (st) st.textContent = "";
+          render();
+        });
+        controls.appendChild(reBtn);
+      }
+    }
+
+    async function downshift() {
+      if (hullResonance !== null) return;
+      if (!signedIn()) {
+        document.getElementById("resonanceStatus").textContent = "Sign in to trigger a downshift.";
+        return;
+      }
+      const chain = activeChain();
+      if (totalSpendableValueUsd() < chain.cost) {
+        document.getElementById("resonanceStatus").textContent =
+          `Insufficient Resonance Catalysts — need ${chain.cost}.`;
+        return;
+      }
+      const btn = document.querySelector("#resonanceControls button:not(.secondary)");
+      if (btn) btn.disabled = true;
+      document.getElementById("resonanceStatus").textContent = "Inducing resonance field\u2026";
+      try {
+        const params = [
+          chain.q,
+          "fl[]=identifier", "fl[]=title",
+          "sort[]=downloads+desc",
+          "output=json", "rows=50"
+        ].join("&");
+        const res = await fetch(`https://archive.org/advancedsearch.php?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const docs = (data?.response?.docs ?? []).filter(
+          d => d.identifier && d.title && ARCHIVE_ID_PATTERN.test(d.identifier)
+        );
+        if (docs.length === 0) throw new Error("No resonant files found in this field.");
+        const pick = docs[Math.floor(Math.random() * docs.length)];
+        // Charge only after a confirmed result
+        if (!spendUsdFromLots(chain.cost)) throw new Error("Insufficient Resonance Catalysts.");
+        saveState();
+        resonanceMovie = {
+          id: ++dynamicIdCounter,
+          title: String(pick.title).trim(),
+          archiveId: pick.identifier
+        };
+        hullResonance = activePair().to.num;
+        document.getElementById("resonanceStatus").textContent = "";
+      } catch (err) {
+        document.getElementById("resonanceStatus").textContent =
+          `\u26A0 Field induction failed: ${err.message}`;
+        if (btn) btn.disabled = false;
+      }
+      render();
+    }
+
+    function toggleAudio() {
+      const btn = document.getElementById("audioToggle");
+      if (!audioEnabled) {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc  = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          // I-127 principal absorption ~514 nm → c/λ ≈ 583.6 THz → 583.6 THz ÷ 2^44 ≈ 33.2 Hz (44 octaves down)
+          osc.type = "sine";
+          osc.frequency.value = 33.2;
+          gain.gain.value = 0.06;
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          audioCtx._osc  = osc;
+          audioCtx._gain = gain;
+        } else {
+          audioCtx.resume();
+        }
+        audioEnabled = true;
+        if (btn) btn.textContent = "\uD83D\uDD0A Iodine Tone: On";
+      } else {
+        audioCtx.suspend();
+        audioEnabled = false;
+        if (btn) btn.textContent = "\uD83D\uDD07 Iodine Tone: Off";
+      }
+    }
+
+    const els = {
+      name: document.getElementById("name"),
+      email: document.getElementById("email"),
+      signInBtn: document.getElementById("signInBtn"),
+      currentUser: document.getElementById("currentUser"),
+      walletValue: document.getElementById("walletValue"),
+      walletTokens: document.getElementById("walletTokens"),
+      tokenQty: document.getElementById("tokenQty"),
+      requestCharge: document.getElementById("requestCharge"),
+      paymentEmail: document.getElementById("paymentEmail"),
+      actionStatus: document.getElementById("actionStatus"),
+      requestTokensBtn: document.getElementById("requestTokensBtn"),
+      requestsList: document.getElementById("requestsList"),
+      auctionSelect: document.getElementById("auctionSelect"),
+      auctionInfo: document.getElementById("auctionInfo"),
+      bidAmount: document.getElementById("bidAmount"),
+      bidBtn: document.getElementById("bidBtn"),
+      bidsList: document.getElementById("bidsList"),
+      movieList: document.getElementById("movieList"),
+      playerModal: document.getElementById("playerModal"),
+      playerTitle: document.getElementById("playerTitle"),
+      playerFrame: document.getElementById("playerFrame"),
+      closePlayer: document.getElementById("closePlayer")
+    };
+
+    function loadState() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || {
+          user: null,
+          tokenLots: [],
+          tokenRequests: [],
+          bids: [],
+          auctionHighestBids: {},
+          unlockedMovies: []
+        };
+      } catch {
+        return { user: null, tokenLots: [], tokenRequests: [], bids: [], auctionHighestBids: {}, unlockedMovies: [] };
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function migrateState() {
+      if (!Array.isArray(state.tokenLots)) state.tokenLots = [];
+      if (typeof state.walletTokens === "number" && state.walletTokens > 0) {
+        state.tokenLots.push({ quantity: state.walletTokens, purchasedAt: LEGACY_MIGRATION_PURCHASED_AT });
+        delete state.walletTokens;
+      }
+      if (!Array.isArray(state.unlockedMovies)) state.unlockedMovies = [];
+      if (!Array.isArray(state.tokenRequests)) state.tokenRequests = [];
+      if (!Array.isArray(state.bids)) state.bids = [];
+      if (!state.auctionHighestBids || typeof state.auctionHighestBids !== "object") state.auctionHighestBids = {};
+      auctions.forEach((auction) => {
+        if (!Number.isFinite(state.auctionHighestBids[auction.id])) {
+          state.auctionHighestBids[auction.id] = auction.highestBid;
+        }
+      });
+    }
+
+    function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
+      const elapsedDays = Math.max(0, Math.floor((now - purchasedAt) / MS_PER_DAY));
+      return 1 + elapsedDays;
+    }
+
+    function totalTokenCount() {
+      return state.tokenLots.reduce((sum, lot) => sum + lot.quantity, 0);
+    }
+
+    function totalSpendableValueUsd(now = Date.now()) {
+      return state.tokenLots.reduce((sum, lot) => sum + (lot.quantity * tokenUnitSpendValue(lot.purchasedAt, now)), 0);
+    }
+
+    function spendUsdFromLots(amountUsd) {
+      const originalLots = state.tokenLots.map((lot) => ({ ...lot }));
+      let remaining = amountUsd;
+      const lots = state.tokenLots
+        .map((lot) => ({ lot, unitValue: tokenUnitSpendValue(lot.purchasedAt) }))
+        .sort((a, b) => b.unitValue - a.unitValue);
+
+      for (const entry of lots) {
+        if (remaining <= 0) break;
+        const unitValue = entry.unitValue;
+        const lotValue = entry.lot.quantity * unitValue;
+        const takeValue = Math.min(lotValue, remaining);
+        const quantityToUse = takeValue / unitValue;
+        entry.lot.quantity = Number((entry.lot.quantity - quantityToUse).toFixed(8));
+        remaining = Number((remaining - takeValue).toFixed(8));
+      }
+
+      if (remaining > FLOAT_EPSILON) {
+        state.tokenLots = originalLots;
+        return false;
+      }
+
+      state.tokenLots = state.tokenLots
+        .map((lot) => ({ ...lot, quantity: Number(lot.quantity.toFixed(8)) }))
+        .filter((lot) => lot.quantity > FLOAT_EPSILON);
+      return true;
+    }
+
+    function processApprovals() {
+      const now = Date.now();
+      state.tokenRequests.forEach((req) => {
+        const ageMs = now - req.requestedAt;
+        if (!req.approved && ageMs >= MS_PER_DAY) {
+          req.approved = true;
+          state.tokenLots.push({
+            quantity: req.quantity,
+            purchasedAt: req.requestedAt
+          });
+        }
+      });
+    }
+
+    function signedIn() {
+      return Boolean(state.user && state.user.name && state.user.email);
+    }
+
+    function setActionStatus(message, isError = false) {
+      els.actionStatus.textContent = message;
+      els.actionStatus.style.color = isError ? "#b22020" : "#3d4961";
+    }
+
+    function renderUser() {
+      if (signedIn()) {
+        els.currentUser.textContent = `Signed in as ${state.user.name} (${state.user.email})`;
+      } else {
+        els.currentUser.textContent = "Not signed in.";
+      }
+    }
+
+    function renderWallet() {
+      const qty = Number(totalTokenCount().toFixed(8));
+      const spendValue = totalSpendableValueUsd();
+      els.walletTokens.textContent = qty;
+      els.walletValue.textContent = `$${spendValue.toFixed(2)}`;
+      els.paymentEmail.textContent = PAYMENT_PAYPAL_EMAIL;
+      els.requestTokensBtn.disabled = !signedIn();
+      const requestedQty = Number(els.tokenQty.value);
+      const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * tokenBuyPriceUsd : 0;
+      els.requestCharge.textContent = `$${charge.toFixed(2)}`;
+    }
+
+    function renderRequests() {
+      els.requestsList.innerHTML = "";
+      state.tokenRequests
+        .slice()
+        .reverse()
+        .forEach((req) => {
+          const li = document.createElement("li");
+          const status = req.approved ? "approved" : "pending (up to 24h)";
+          li.textContent = `${req.quantity} Catalyst(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
+          els.requestsList.appendChild(li);
+        });
+    }
+
+    function renderAuctions() {
+      els.auctionSelect.innerHTML = "";
+      auctions.forEach((a) => {
+        const option = document.createElement("option");
+        option.value = a.id;
+        option.textContent = a.item;
+        els.auctionSelect.appendChild(option);
+      });
+      refreshAuctionInfo();
+      els.bidsList.innerHTML = "";
+      state.bids.slice().reverse().forEach((bid) => {
+        const li = document.createElement("li");
+        li.textContent = `${bid.userName} bid $${bid.amount} on ${bid.item}`;
+        els.bidsList.appendChild(li);
+      });
+      els.bidBtn.disabled = !signedIn();
+    }
+
+    function refreshAuctionInfo() {
+      const found = auctions.find((a) => a.id === els.auctionSelect.value) || auctions[0];
+      if (!found) return;
+      const currentHighest = state.auctionHighestBids[found.id] ?? found.highestBid;
+      els.auctionInfo.textContent = `Current highest bid: $${currentHighest}`;
+    }
+
+    const ARCHIVE_ID_PATTERN = /^[A-Za-z0-9_.\-]{1,200}$/;
+
+    function openPlayer(movie) {
+      if (!ARCHIVE_ID_PATTERN.test(movie.archiveId)) return;
+      els.playerTitle.textContent = movie.title;
+      // Load into the embedded player — archive.org embed URL, no YouTube
+      els.playerFrame.src = `https://archive.org/embed/${encodeURIComponent(movie.archiveId)}`;
+      els.playerModal.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+
+    function closePlayer() {
+      els.playerModal.hidden = true;
+      els.playerFrame.src = "";
+      document.body.style.overflow = "";
+    }
+
+    function renderLevelFilter() {
+      const bar = document.getElementById("levelFilter");
+      if (!bar) return;
+      bar.innerHTML = "";
+
+      const allBtn = document.createElement("button");
+      allBtn.className = "level-btn" + (currentLevelFilter === 0 ? " active" : "");
+      allBtn.style.background = currentLevelFilter === 0 ? "#2f63ff" : "#e8eeff";
+      allBtn.style.color = currentLevelFilter === 0 ? "#fff" : "#162033";
+      allBtn.textContent = "All";
+      allBtn.addEventListener("click", () => { currentLevelFilter = 0; render(); });
+      bar.appendChild(allBtn);
+
+      resonanceLevels.forEach(level => {
+        const btn = document.createElement("button");
+        btn.className = "level-btn" + (currentLevelFilter === level.id ? " active" : "");
+        btn.style.background = level.bg;
+        btn.style.color = level.fg;
+        btn.title = `${level.name} — ${level.desc}`;
+        btn.textContent = `${level.symbol} · ${level.name}`;
+        btn.addEventListener("click", () => { currentLevelFilter = level.id; render(); });
+        bar.appendChild(btn);
+      });
+    }
+
+    function renderMovies() {
+      renderLevelFilter();
+      els.movieList.innerHTML = "";
+      const walletValue = totalSpendableValueUsd();
+      const source = currentLevelFilter === 0
+        ? allMovies()
+        : allMovies().filter(m => movieLevel(extractYear(m.title)).id === currentLevelFilter);
+
+      if (source.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.style.padding = "8px";
+        empty.textContent = "No films in this resonance level.";
+        els.movieList.appendChild(empty);
+        return;
+      }
+
+      source.forEach((movie) => {
+        const level = movieLevel(extractYear(movie.title));
+        const row = document.createElement("div");
+        row.className = "movie-item";
+
+        const titleSpan = document.createElement("span");
+        const badge = document.createElement("span");
+        badge.className = "elem-badge";
+        badge.style.background = level.bg;
+        badge.style.color = level.fg;
+        badge.title = `${level.name} — ${level.desc}`;
+        badge.textContent = level.symbol;
+        titleSpan.appendChild(badge);
+        titleSpan.appendChild(document.createTextNode(movie.title));
+
+        const btnRow = document.createElement("div");
+        btnRow.className = "btn-row";
+
+        const purchased = state.unlockedMovies.includes(movie.id);
+
+        if (purchased) {
+          const watchBtn = document.createElement("button");
+          watchBtn.textContent = "▶ Watch";
+          watchBtn.addEventListener("click", () => openPlayer(movie));
+          btnRow.appendChild(watchBtn);
+        } else {
+          const buyBtn = document.createElement("button");
+          buyBtn.textContent = `Buy ($${moviePriceUsd})`;
+          buyBtn.disabled = !signedIn() || walletValue < moviePriceUsd;
+          buyBtn.addEventListener("click", () => {
+            if (!spendUsdFromLots(moviePriceUsd)) return;
+            state.unlockedMovies.push(movie.id);
+            saveState();
+            render();
+          });
+          btnRow.appendChild(buyBtn);
+        }
+
+        row.appendChild(titleSpan);
+        row.appendChild(btnRow);
+        els.movieList.appendChild(row);
+      });
+    }
+
+    function render() {
+      migrateState();
+      processApprovals();
+      saveState();
+      renderUser();
+      renderWallet();
+      renderRequests();
+      renderAuctions();
+      renderResonanceChamber();
+      renderMovies();
+    }
+
+    els.signInBtn.addEventListener("click", () => {
+      const name = els.name.value.trim();
+      const email = els.email.value.trim();
+      if (!name || !email) return;
+      state.user = { name, email };
+      saveState();
+      render();
+    });
+
+    els.requestTokensBtn.addEventListener("click", () => {
+      const quantity = Number(els.tokenQty.value);
+      if (!signedIn()) {
+        setActionStatus("Sign in before submitting a token request.", true);
+        return;
+      }
+      if (!Number.isFinite(quantity) || quantity < MIN_TOKEN_QUANTITY || quantity > MAX_TOKEN_QUANTITY) {
+        setActionStatus(`Enter a valid token quantity (${MIN_TOKEN_QUANTITY} - ${MAX_TOKEN_QUANTITY}).`, true);
+        return;
+      }
+      state.tokenRequests.push({
+        quantity: Number(quantity.toFixed(8)),
+        requestedAt: Date.now(),
+        approved: false
+      });
+      setActionStatus("Payment request submitted.");
+      saveState();
+      render();
+    });
+
+    els.tokenQty.addEventListener("input", renderWallet);
+
+    async function fetchFromArchive() {
+      const fetchBtn = document.getElementById("fetchBtn");
+      const fetchStatus = document.getElementById("fetchStatus");
+      fetchBtn.disabled = true;
+      fetchStatus.textContent = "Fetching…";
+      try {
+        const params = [
+          "q=mediatype:(movies)+AND+subject:(public+domain)",
+          "fl[]=identifier", "fl[]=title", "fl[]=year",
+          "sort[]=downloads+desc",
+          "output=json", "rows=30"
+        ].join("&");
+        const res = await fetch(`https://archive.org/advancedsearch.php?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const docs = data?.response?.docs ?? [];
+        const existingIds = new Set(
+          movies.map(m => m.archiveId).concat(liveMovies.map(m => m.archiveId))
+        );
+        let added = 0;
+        docs.forEach(doc => {
+          if (!doc.identifier || !doc.title) return;
+          if (!ARCHIVE_ID_PATTERN.test(doc.identifier)) return;
+          if (existingIds.has(doc.identifier)) return;
+          const yearStr = doc.year ? ` (${doc.year})` : "";
+          liveMovies.push({
+            id: ++dynamicIdCounter,
+            title: `${String(doc.title).trim()}${yearStr}`,
+            archiveId: doc.identifier
+          });
+          existingIds.add(doc.identifier);
+          added++;
+        });
+        fetchStatus.textContent = added > 0
+          ? `✔ Added ${added} new title${added !== 1 ? "s" : ""} from Internet Archive.`
+          : "No new titles found.";
+        render();
+      } catch (err) {
+        fetchStatus.textContent = `⚠ Fetch failed: ${err.message}`;
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    }
+
+    document.getElementById("fetchBtn").addEventListener("click", fetchFromArchive);
+    document.getElementById("audioToggle").addEventListener("click", toggleAudio);
+
+    els.closePlayer.addEventListener("click", closePlayer);
+    els.playerModal.addEventListener("click", (e) => {
+      if (e.target === els.playerModal) closePlayer();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !els.playerModal.hidden) closePlayer();
+    });
+
+    els.auctionSelect.addEventListener("change", refreshAuctionInfo);
+
+    els.bidBtn.addEventListener("click", () => {
+      const selected = auctions.find((a) => a.id === els.auctionSelect.value);
+      const amount = Number(els.bidAmount.value);
+      const currentHighest = selected ? (state.auctionHighestBids[selected.id] ?? selected.highestBid) : 0;
+      if (!signedIn()) {
+        setActionStatus("Sign in before placing a bid.", true);
+        return;
+      }
+      if (!selected || !Number.isFinite(amount) || amount < currentHighest + MIN_BID_INCREMENT_USD) {
+        setActionStatus(`Bid must be at least $${currentHighest + MIN_BID_INCREMENT_USD}.`, true);
+        return;
+      }
+      state.auctionHighestBids[selected.id] = amount;
+      state.bids.push({
+        userName: state.user.name,
+        amount,
+        item: selected.item,
+        at: Date.now()
+      });
+      setActionStatus("Bid submitted.");
+      saveState();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
