@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Omar Resonance Catalyst</title>
+  <title>Omar Resonance Catalyst — Atomic Oracle</title>
   <style>
     :root { font-family: Arial, sans-serif; color-scheme: light; }
     body { margin: 0; background: #f5f7fb; color: #162033; }
@@ -156,7 +156,7 @@
         <div id="resonanceStatus" class="hint" style="min-height:1.4em;text-align:center;"></div>
         <div class="tone-bar">
           <button id="audioToggle" class="secondary">&#x1F507; Iodine Tone: Off</button>
-          <span class="hint" style="font-size:0.72rem;">~33.2 Hz &mdash; I-127 principal line, &minus;44 octaves</span>
+          <span class="hint" style="font-size:0.72rem;">~33.2 Hz &mdash; I-127 principal line, 44 octaves down</span>
         </div>
       </section>
 
@@ -178,7 +178,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <div>
-          <div class="modal-brand">Omar Token — Resonance Event</div>
+          <div class="modal-brand">Omar Resonance Catalyst — Resonance Event</div>
           <div class="modal-title" id="playerTitle"></div>
         </div>
         <button id="closePlayer" title="Close">✕ Close</button>
@@ -408,12 +408,13 @@
       }
     ];
 
-    let hullResonance    = null; // null = stable (matches activePair().from.num); set to pair.to.num when discharged
+    let hullResonance    = null; // null = stable (uncharged); set to activePair().to.num after discharge
     let selectedPairIdx  = 1;    // default: 54↓53
-    let selectedChainIdx = 0;   // default: first (cheapest) chain
+    let selectedChainIdx = 0;    // default: first (cheapest) chain
     let resonanceMovie   = null;
     let audioCtx         = null;
     let audioEnabled     = false;
+    let dynamicIdCounter = 2000; // monotonically increasing ID for live-fetched and resonance movies
 
     function activePair()  { return RESONANCE_PAIRS[selectedPairIdx]; }
     function activeChain() { return activePair().chains[selectedChainIdx]; }
@@ -582,7 +583,7 @@
         if (!spendUsdFromLots(chain.cost)) throw new Error("Insufficient Resonance Catalysts.");
         saveState();
         resonanceMovie = {
-          id: 9000 + Math.floor(Math.random() * 999),
+          id: ++dynamicIdCounter,
           title: String(pick.title).trim(),
           archiveId: pick.identifier
         };
@@ -603,7 +604,7 @@
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           const osc  = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
-          // I-127 principal absorption line ~514 nm → c/λ ≈ 583.6 THz → ÷2^44 (17.59 trillion) ≈ 33.2 Hz
+          // I-127 principal absorption ~514 nm → c/λ ≈ 583.6 THz → 583.6 THz ÷ 2^44 ≈ 33.2 Hz (44 octaves down)
           osc.type = "sine";
           osc.frequency.value = 33.2;
           gain.gain.value = 0.06;
@@ -979,7 +980,7 @@
           if (existingIds.has(doc.identifier)) return;
           const yearStr = doc.year ? ` (${doc.year})` : "";
           liveMovies.push({
-            id: 1000 + liveMovies.length + 1,
+            id: ++dynamicIdCounter,
             title: `${String(doc.title).trim()}${yearStr}`,
             archiveId: doc.identifier
           });
