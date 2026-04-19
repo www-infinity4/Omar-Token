@@ -114,6 +114,8 @@
         <label for="tokenQty">Catalysts requested after PayPal payment ($1 each)</label>
         <input id="tokenQty" type="number" min="0.01" step="0.01" value="1" />
         <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
+        <div class="hint">Daily value chart from purchase date:</div>
+        <ul id="requestGrowthChart"></ul>
         <button id="requestTokensBtn">Submit Payment Request</button>
         <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request Catalysts. Approval happens after 24h.</div>
         <div id="actionStatus" class="hint"></div>
@@ -198,7 +200,8 @@
     const MAX_TOKEN_QUANTITY = 100000;
     const MIN_BID_INCREMENT_USD = 1;
     const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
-    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "seller@example.com";
+    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "marvaseater@gmail.com";
+    const ADMIN_EMAIL = "marvaseater@gmail.com";
     const state = loadState();
 
     const auctions = [
@@ -634,6 +637,7 @@
       walletTokens: document.getElementById("walletTokens"),
       tokenQty: document.getElementById("tokenQty"),
       requestCharge: document.getElementById("requestCharge"),
+      requestGrowthChart: document.getElementById("requestGrowthChart"),
       paymentEmail: document.getElementById("paymentEmail"),
       actionStatus: document.getElementById("actionStatus"),
       requestTokensBtn: document.getElementById("requestTokensBtn"),
@@ -732,17 +736,34 @@
       state.tokenRequests.forEach((req) => {
         const ageMs = now - req.requestedAt;
         if (!req.approved && ageMs >= MS_PER_DAY) {
-          req.approved = true;
-          state.tokenLots.push({
-            quantity: req.quantity,
-            purchasedAt: req.requestedAt
-          });
+          approveTokenRequest(req);
         }
       });
     }
 
     function signedIn() {
       return Boolean(state.user && state.user.name && state.user.email);
+    }
+
+    function isAdmin() {
+      return signedIn() && String(state.user.email).toLowerCase() === ADMIN_EMAIL;
+    }
+
+    function approveTokenRequest(req) {
+      if (req.approved) return;
+      req.approved = true;
+      state.tokenLots.push({
+        quantity: req.quantity,
+        purchasedAt: req.requestedAt
+      });
+    }
+
+    function formatChartDate(ts) {
+      return new Date(ts).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+      });
     }
 
     function setActionStatus(message, isError = false) {
@@ -752,7 +773,7 @@
 
     function renderUser() {
       if (signedIn()) {
-        els.currentUser.textContent = `Signed in as ${state.user.name} (${state.user.email})`;
+        els.currentUser.textContent = `Signed in as ${state.user.name} (${state.user.email})${isAdmin() ? " — Admin" : ""}`;
       } else {
         els.currentUser.textContent = "Not signed in.";
       }
@@ -768,6 +789,18 @@
       const requestedQty = Number(els.tokenQty.value);
       const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * tokenBuyPriceUsd : 0;
       els.requestCharge.textContent = `$${charge.toFixed(2)}`;
+      els.requestGrowthChart.innerHTML = "";
+      if (Number.isFinite(requestedQty) && requestedQty > 0) {
+        const start = Date.now();
+        for (let day = 0; day < 7; day++) {
+          const li = document.createElement("li");
+          const pointDate = start + (day * MS_PER_DAY);
+          const valuePerToken = 1 + day;
+          const totalValue = requestedQty * valuePerToken;
+          li.textContent = `${formatChartDate(pointDate)}: $${totalValue.toFixed(2)}`;
+          els.requestGrowthChart.appendChild(li);
+        }
+      }
     }
 
     function renderRequests() {
@@ -779,6 +812,20 @@
           const li = document.createElement("li");
           const status = req.approved ? "approved" : "pending (up to 24h)";
           li.textContent = `${req.quantity} Catalyst(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
+          if (!req.approved && isAdmin()) {
+            const approveBtn = document.createElement("button");
+            approveBtn.type = "button";
+            approveBtn.textContent = "Mark PayPal Arrived";
+            approveBtn.style.marginTop = "6px";
+            approveBtn.addEventListener("click", () => {
+              approveTokenRequest(req);
+              setActionStatus("Payment marked as arrived and request approved.");
+              saveState();
+              render();
+            });
+            li.appendChild(document.createElement("br"));
+            li.appendChild(approveBtn);
+          }
           els.requestsList.appendChild(li);
         });
     }
