@@ -45,6 +45,33 @@
     /* Live-fetch bar */
     .fetch-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
     .fetch-bar button { width: auto; margin-top: 0; padding: 5px 14px; font-size: 0.85rem; }
+    /* Leyden Jar — Resonance Chamber */
+    .resonance-chamber { text-align: center; }
+    .leyden-jar { display: flex; align-items: center; justify-content: center; padding: 24px 0 14px; }
+    .node { width: 110px; height: 110px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+    .node-xenon { background: radial-gradient(circle, #fff9d0 0%, #f5c518 50%, #e8a800 100%); box-shadow: 0 0 28px #f5c51888, 0 0 56px #f5c51844; animation: xe-pulse 2.5s ease-in-out infinite; }
+    .node-iodine { background: radial-gradient(circle, #f0e8ff 0%, #a06ad4 50%, #7a3fb0 100%); box-shadow: 0 0 8px #a06ad422; transition: box-shadow 0.6s, transform 0.6s; }
+    .node-iodine.awake { box-shadow: 0 0 28px #a06ad488, 0 0 56px #a06ad444; animation: i-pulse 1s ease-in-out infinite; }
+    .node-symbol { font-size: 2rem; font-weight: 900; color: #162033; line-height: 1; }
+    .node-num { font-size: 0.85rem; font-weight: 700; color: #162033; }
+    .node-state { font-size: 0.58rem; font-weight: 600; color: #3d4961; letter-spacing: 0.06em; margin-top: 3px; }
+    .node-gap { display: flex; align-items: center; justify-content: center; transition: width 0.5s ease; overflow: visible; position: relative; flex-shrink: 0; }
+    .gap-sparks { font-size: 1.3rem; opacity: 0; transition: opacity 0.3s; }
+    .gap-sparks.visible { opacity: 1; animation: spark-flicker 0.35s ease-in-out infinite; }
+    @keyframes xe-pulse { 0%,100% { box-shadow: 0 0 28px #f5c51888, 0 0 56px #f5c51844; } 50% { box-shadow: 0 0 44px #f5c518cc, 0 0 88px #f5c51866; } }
+    @keyframes i-pulse { 0%,100% { box-shadow: 0 0 28px #a06ad488, 0 0 56px #a06ad444; } 50% { box-shadow: 0 0 48px #a06ad4cc, 0 0 96px #a06ad466; transform: scale(1.04); } }
+    @keyframes spark-flicker { 0%,100% { opacity: 0.5; transform: scaleX(1); } 50% { opacity: 1; transform: scaleX(1.3); } }
+    .chain-ladder { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 4px 0 12px; }
+    .chain-card { border: 2px solid #ccd4e2; border-radius: 10px; padding: 10px 18px; cursor: pointer; min-width: 110px; transition: border-color 0.2s, box-shadow 0.2s; background: #fff; }
+    .chain-card:hover { border-color: #7a9fff; }
+    .chain-card.selected { border-color: #2f63ff; box-shadow: 0 0 0 2px #2f63ff44; }
+    .chain-cost { font-size: 1.05rem; font-weight: 900; color: #2f63ff; }
+    .chain-label { font-size: 0.75rem; font-weight: 700; color: #162033; margin: 3px 0 1px; }
+    .chain-desc { font-size: 0.67rem; color: #5a6475; }
+    .resonance-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 4px 0; }
+    .resonance-controls button { width: auto; margin-top: 0; padding: 9px 24px; }
+    .tone-bar { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .tone-bar button { width: auto; margin-top: 0; padding: 4px 14px; font-size: 0.78rem; }
   </style>
 </head>
 <body>
@@ -63,16 +90,16 @@
       </section>
 
       <section class="card">
-        <h2>Token Wallet</h2>
-        <div>Buy price per token: <span class="pill">$1</span></div>
+        <h2>Resonance Catalyst Wallet</h2>
+        <div>Buy price per Catalyst: <span class="pill">$1</span></div>
         <div>Spendable wallet value: <span id="walletValue" class="pill">$0.00</span></div>
-        <p class="hint">Token spend value increases by about $1 per day from each token purchase date.</p>
-        <div>Available tokens (decimals supported): <span id="walletTokens" class="pill">0</span></div>
-        <label for="tokenQty">Tokens requested after PayPal payment ($1 each)</label>
+        <p class="hint">Each Resonance Catalyst gains ~$1/day in spend value from purchase. Spend Catalysts to unlock films or discharge Resonance Events.</p>
+        <div>Available Catalysts (decimals supported): <span id="walletTokens" class="pill">0</span></div>
+        <label for="tokenQty">Catalysts requested after PayPal payment ($1 each)</label>
         <input id="tokenQty" type="number" min="0.01" step="0.01" value="1" />
         <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
         <button id="requestTokensBtn">Submit Payment Request</button>
-        <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request tokens. Approval happens after 24h.</div>
+        <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request Catalysts. Approval happens after 24h.</div>
         <div id="actionStatus" class="hint"></div>
         <ul id="requestsList"></ul>
       </section>
@@ -86,6 +113,34 @@
         <input id="bidAmount" type="number" min="1" value="1" />
         <button id="bidBtn">Sign Up & Place Bid</button>
         <ul id="bidsList"></ul>
+      </section>
+
+      <!-- Leyden Jar: 54/53 Resonance Chamber -->
+      <section class="card resonance-chamber" style="grid-column: 1/-1;">
+        <h2>The Leyden Jar — 54/53 Resonance Chamber</h2>
+        <p class="hint">The Xenon node (54) holds the charge. Chain Resonance Catalysts to bring it close to Iodine (53). At contact, the field discharges — a hidden film materialises from the Archive.</p>
+        <div class="leyden-jar">
+          <div class="node node-xenon">
+            <div class="node-symbol">Xe</div>
+            <div class="node-num">54</div>
+            <div class="node-state">HIGH ENERGY</div>
+          </div>
+          <div class="node-gap" id="nodeGap">
+            <div class="gap-sparks" id="gapSparks">&#x26A1;</div>
+          </div>
+          <div class="node node-iodine" id="nodeIodine">
+            <div class="node-symbol">I</div>
+            <div class="node-num">53</div>
+            <div class="node-state" id="iodineState">DORMANT</div>
+          </div>
+        </div>
+        <div class="chain-ladder" id="chainLadder"></div>
+        <div class="resonance-controls" id="resonanceControls"></div>
+        <div id="resonanceStatus" class="hint" style="min-height:1.4em;"></div>
+        <div class="tone-bar">
+          <button id="audioToggle" class="secondary">&#x1F507; Iodine Tone: Off</button>
+          <span class="hint" style="font-size:0.72rem;">~33.2 Hz &mdash; I-127 principal line, &minus;44 octaves</span>
+        </div>
       </section>
 
       <section class="card" style="grid-column: 1/-1;">
@@ -106,7 +161,7 @@
     <div class="modal-box">
       <div class="modal-header">
         <div>
-          <div class="modal-brand">Omar Token Screening Room</div>
+          <div class="modal-brand">Omar Token — Resonance Event</div>
           <div class="modal-title" id="playerTitle"></div>
         </div>
         <button id="closePlayer" title="Close">✕ Close</button>
