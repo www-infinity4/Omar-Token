@@ -194,6 +194,8 @@
   <script>
     const storageKey = "omarTokenData";
     const tokenBuyPriceUsd = 1;
+    const DAILY_VALUE_INCREMENT_USD = 1;
+    const CHART_PROJECTION_DAYS = 7;
     const MS_PER_DAY = 86400000;
     const FLOAT_EPSILON = 0.000001;
     const MIN_TOKEN_QUANTITY = 0.01;
@@ -693,7 +695,7 @@
 
     function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
       const elapsedDays = Math.max(0, Math.floor((now - purchasedAt) / MS_PER_DAY));
-      return 1 + elapsedDays;
+      return tokenBuyPriceUsd + (elapsedDays * DAILY_VALUE_INCREMENT_USD);
     }
 
     function totalTokenCount() {
@@ -793,10 +795,10 @@
       els.requestGrowthChart.innerHTML = "";
       if (Number.isFinite(requestedQty) && requestedQty > 0) {
         const start = Date.now();
-        for (let day = 0; day < 7; day++) {
+        for (let day = 0; day < CHART_PROJECTION_DAYS; day++) {
           const li = document.createElement("li");
           const pointDate = start + (day * MS_PER_DAY);
-          const valuePerToken = 1 + day;
+          const valuePerToken = tokenBuyPriceUsd + (day * DAILY_VALUE_INCREMENT_USD);
           const totalValue = requestedQty * valuePerToken;
           li.textContent = `${formatChartDate(pointDate)}: $${totalValue.toFixed(2)}`;
           els.requestGrowthChart.appendChild(li);
