@@ -202,6 +202,7 @@
     const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
     const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "marvaseater@gmail.com";
     const ADMIN_EMAIL = "marvaseater@gmail.com";
+    const ADMIN_EMAIL_NORMALIZED = ADMIN_EMAIL.toLowerCase();
     const state = loadState();
 
     const auctions = [
@@ -746,7 +747,7 @@
     }
 
     function isAdmin() {
-      return signedIn() && String(state.user.email).toLowerCase() === ADMIN_EMAIL;
+      return signedIn() && String(state.user.email).trim().toLowerCase() === ADMIN_EMAIL_NORMALIZED;
     }
 
     function approveTokenRequest(req) {
@@ -815,7 +816,7 @@
           if (!req.approved && isAdmin()) {
             const approveBtn = document.createElement("button");
             approveBtn.type = "button";
-            approveBtn.textContent = "Mark PayPal Arrived";
+            approveBtn.textContent = "Mark PayPal as Received";
             approveBtn.style.marginTop = "6px";
             approveBtn.addEventListener("click", () => {
               approveTokenRequest(req);
