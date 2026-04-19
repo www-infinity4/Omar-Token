@@ -99,7 +99,7 @@
       </div>
       <iframe id="playerFrame" src="" allowfullscreen
         allow="autoplay; fullscreen"
-        sandbox="allow-scripts allow-same-origin allow-presentation"></iframe>
+        sandbox="allow-scripts allow-forms allow-presentation"></iframe>
     </div>
   </div>
 
@@ -208,7 +208,7 @@
       { id: 81, title: "The 39 Steps (1935)",                       archiveId: "The39Steps1935Hitchcock" },
       { id: 82, title: "Young and Innocent (1937)",                 archiveId: "YoungAndInnocent1937Hitchcock" },
       { id: 83, title: "Jamaica Inn (1939)",                        archiveId: "JamaicaInn1939Hitchcock" },
-      { id: 84, title: "His Girl Friday (1940) — Director's Cut",   archiveId: "HisGirlFriday_alt1940" },
+      { id: 84, title: "The Roaring Twenties (1939)",               archiveId: "TheRoaringTwenties1939Walsh" },
       { id: 85, title: "The Mystery of the Wax Museum (1933)",      archiveId: "MysteryOfWaxMuseum1933Curtiz" },
       { id: 86, title: "The Cat and the Canary (1927)",             archiveId: "CatAndCanary1927Leni" },
       { id: 87, title: "The Man Who Laughs (1928)",                 archiveId: "TheManWhoLaughs1928Leni" },
@@ -220,7 +220,7 @@
       { id: 93, title: "Neighbors (1920)",                          archiveId: "Neighbors1920Keaton" },
       { id: 94, title: "Convict 13 (1920)",                         archiveId: "Convict131920Keaton" },
       { id: 95, title: "The High Sign (1921)",                      archiveId: "TheHighSign1921Keaton" },
-      { id: 96, title: "The Electric House (1922)",                  archiveId: "TheElectricHouse1922Keaton" },
+      { id: 96, title: "The Electric House (1922)",                archiveId: "TheElectricHouse1922Keaton" },
       { id: 97, title: "Balloonatics (1923)",                       archiveId: "Balloonatics1923Keaton" },
       { id: 98, title: "Fatty and Mabel Adrift (1916)",             archiveId: "FattyAndMabelAdrift1916Arbuckle" },
       { id: 99, title: "His Wedding Night (1917)",                  archiveId: "HisWeddingNight1917Arbuckle" },
@@ -410,7 +410,10 @@
       els.auctionInfo.textContent = `Current highest bid: $${currentHighest}`;
     }
 
+    const ARCHIVE_ID_PATTERN = /^[A-Za-z0-9_.\-]{1,200}$/;
+
     function openPlayer(movie) {
+      if (!ARCHIVE_ID_PATTERN.test(movie.archiveId)) return;
       els.playerTitle.textContent = movie.title;
       // Load into the embedded player — archive.org embed URL, no YouTube
       els.playerFrame.src = `https://archive.org/embed/${encodeURIComponent(movie.archiveId)}`;
