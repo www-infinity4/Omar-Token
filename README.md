@@ -5,8 +5,8 @@ Minimal single-page demo for a personal auction token:
 - Sign in with name/email (stored locally in browser only)
 - Token buy price is **$1 per token**
 - Token spend value grows over time (about +$1/day per token age)
-- Buyers submit PayPal payment proof to request tokens
-- Token requests are approved after up to 24 hours
+- Buyers submit a PayPal payment request in this demo flow (proof upload is not implemented)
+- Token requests are approved after 24 hours
 - 100 movie catalog entries are sourced from free YouTube listings
 - Each movie purchase is charged at $5
 - Spending supports decimal token amounts so users can receive value as change
@@ -14,7 +14,9 @@ Minimal single-page demo for a personal auction token:
 
 ## Run
 
-Open `/home/runner/work/Omar-Token/Omar-Token/index.html` in a browser.
+Open `index.html` in a browser.
+
+Optional: set `localStorage.omarPayPalEmail` to your PayPal address before use.
 
 ## Security note
 

@@ -47,10 +47,11 @@
         <p class="hint">Token spend value increases by about $1 per day from each token purchase date.</p>
         <div>Available tokens (decimals supported): <span id="walletTokens" class="pill">0</span></div>
         <label for="tokenQty">Tokens requested after PayPal payment ($1 each)</label>
-        <input id="tokenQty" type="number" min="1" value="1" />
+        <input id="tokenQty" type="number" min="0.01" step="0.01" value="1" />
         <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
         <button id="requestTokensBtn">Submit Payment Request</button>
-        <div class="hint">Pay to <code>watsonkris611@gmail.com</code> (PayPal), then request tokens. Approval can take up to 24h.</div>
+        <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request tokens. Approval happens after 24h.</div>
+        <div id="actionStatus" class="hint"></div>
         <ul id="requestsList"></ul>
       </section>
 
@@ -76,6 +77,12 @@
   <script>
     const storageKey = "omarTokenData";
     const tokenBuyPriceUsd = 1;
+    const MS_PER_DAY = 86400000;
+    const FLOAT_EPSILON = 0.000001;
+    const MIN_TOKEN_QUANTITY = 0.01;
+    const MIN_BID_INCREMENT_USD = 1;
+    const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
+    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "seller@example.com";
     const state = loadState();
 
     const auctions = [
@@ -88,7 +95,7 @@
     const movies = Array.from({ length: 100 }).map((_, i) => ({
       id: i + 1,
       title: `Featured Movie #${i + 1}`,
-      url: `https://www.youtube.com/results?search_query=free+mystery+movie+${i + 1}`
+      url: `https://www.youtube.com/results?search_query=free+featured+movie+${i + 1}`
     }));
 
     const els = {
@@ -100,6 +107,8 @@
       walletTokens: document.getElementById("walletTokens"),
       tokenQty: document.getElementById("tokenQty"),
       requestCharge: document.getElementById("requestCharge"),
+      paymentEmail: document.getElementById("paymentEmail"),
+      actionStatus: document.getElementById("actionStatus"),
       requestTokensBtn: document.getElementById("requestTokensBtn"),
       requestsList: document.getElementById("requestsList"),
       auctionSelect: document.getElementById("auctionSelect"),
@@ -117,10 +126,11 @@
           tokenLots: [],
           tokenRequests: [],
           bids: [],
+          auctionHighestBids: {},
           unlockedMovies: []
         };
       } catch {
-        return { user: null, tokenLots: [], tokenRequests: [], bids: [], unlockedMovies: [] };
+        return { user: null, tokenLots: [], tokenRequests: [], bids: [], auctionHighestBids: {}, unlockedMovies: [] };
       }
     }
 
@@ -131,16 +141,22 @@
     function migrateState() {
       if (!Array.isArray(state.tokenLots)) state.tokenLots = [];
       if (typeof state.walletTokens === "number" && state.walletTokens > 0) {
-        state.tokenLots.push({ quantity: state.walletTokens, purchasedAt: Date.now() });
+        state.tokenLots.push({ quantity: state.walletTokens, purchasedAt: LEGACY_MIGRATION_PURCHASED_AT });
         delete state.walletTokens;
       }
       if (!Array.isArray(state.unlockedMovies)) state.unlockedMovies = [];
       if (!Array.isArray(state.tokenRequests)) state.tokenRequests = [];
       if (!Array.isArray(state.bids)) state.bids = [];
+      if (!state.auctionHighestBids || typeof state.auctionHighestBids !== "object") state.auctionHighestBids = {};
+      auctions.forEach((auction) => {
+        if (!Number.isFinite(state.auctionHighestBids[auction.id])) {
+          state.auctionHighestBids[auction.id] = auction.highestBid;
+        }
+      });
     }
 
     function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
-      const elapsedDays = Math.floor((now - purchasedAt) / 86400000);
+      const elapsedDays = Math.floor((now - purchasedAt) / MS_PER_DAY);
       return Math.max(1, 1 + elapsedDays);
     }
 
@@ -155,26 +171,28 @@
     function spendUsdFromLots(amountUsd) {
       const originalLots = state.tokenLots.map((lot) => ({ ...lot }));
       let remaining = amountUsd;
-      const lots = [...state.tokenLots].sort((a, b) => tokenUnitSpendValue(b.purchasedAt) - tokenUnitSpendValue(a.purchasedAt));
+      const lots = state.tokenLots
+        .map((lot) => ({ lot, unitValue: tokenUnitSpendValue(lot.purchasedAt) }))
+        .sort((a, b) => b.unitValue - a.unitValue);
 
-      for (const lot of lots) {
+      for (const entry of lots) {
         if (remaining <= 0) break;
-        const unitValue = tokenUnitSpendValue(lot.purchasedAt);
-        const lotValue = lot.quantity * unitValue;
+        const unitValue = entry.unitValue;
+        const lotValue = entry.lot.quantity * unitValue;
         const takeValue = Math.min(lotValue, remaining);
         const quantityToUse = takeValue / unitValue;
-        lot.quantity = Number((lot.quantity - quantityToUse).toFixed(8));
+        entry.lot.quantity = Number((entry.lot.quantity - quantityToUse).toFixed(8));
         remaining = Number((remaining - takeValue).toFixed(8));
       }
 
-      if (remaining > 0.000001) {
+      if (remaining > FLOAT_EPSILON) {
         state.tokenLots = originalLots;
         return false;
       }
 
       state.tokenLots = state.tokenLots
         .map((lot) => ({ ...lot, quantity: Number(lot.quantity.toFixed(8)) }))
-        .filter((lot) => lot.quantity > 0.00000001);
+        .filter((lot) => lot.quantity > FLOAT_EPSILON);
       return true;
     }
 
@@ -182,7 +200,7 @@
       const now = Date.now();
       state.tokenRequests.forEach((req) => {
         const ageMs = now - req.requestedAt;
-        if (!req.approved && ageMs >= 86400000) {
+        if (!req.approved && ageMs >= MS_PER_DAY) {
           req.approved = true;
           state.tokenLots.push({
             quantity: req.quantity,
@@ -193,7 +211,12 @@
     }
 
     function signedIn() {
-      return Boolean(state.user && state.user.email);
+      return Boolean(state.user && state.user.name && state.user.email);
+    }
+
+    function setActionStatus(message, isError = false) {
+      els.actionStatus.textContent = message;
+      els.actionStatus.style.color = isError ? "#b22020" : "#3d4961";
     }
 
     function renderUser() {
@@ -209,6 +232,7 @@
       const spendValue = totalSpendableValueUsd();
       els.walletTokens.textContent = qty;
       els.walletValue.textContent = `$${spendValue.toFixed(2)}`;
+      els.paymentEmail.textContent = PAYMENT_PAYPAL_EMAIL;
       els.requestTokensBtn.disabled = !signedIn();
       const requestedQty = Number(els.tokenQty.value);
       const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * tokenBuyPriceUsd : 0;
@@ -249,11 +273,13 @@
     function refreshAuctionInfo() {
       const found = auctions.find((a) => a.id === els.auctionSelect.value) || auctions[0];
       if (!found) return;
-      els.auctionInfo.textContent = `Current highest bid: $${found.highestBid}`;
+      const currentHighest = state.auctionHighestBids[found.id] ?? found.highestBid;
+      els.auctionInfo.textContent = `Current highest bid: $${currentHighest}`;
     }
 
     function renderMovies() {
       els.movieList.innerHTML = "";
+      const walletValue = totalSpendableValueUsd();
       movies.forEach((movie) => {
         const row = document.createElement("div");
         row.className = "movie-item";
@@ -266,7 +292,7 @@
         left.appendChild(link);
         const btn = document.createElement("button");
         btn.textContent = state.unlockedMovies.includes(movie.id) ? "Purchased" : `Buy ($${moviePriceUsd})`;
-        btn.disabled = !signedIn() || state.unlockedMovies.includes(movie.id) || totalSpendableValueUsd() < moviePriceUsd;
+        btn.disabled = !signedIn() || state.unlockedMovies.includes(movie.id) || walletValue < moviePriceUsd;
         btn.addEventListener("click", () => {
           if (!spendUsdFromLots(moviePriceUsd)) return;
           state.unlockedMovies.push(movie.id);
@@ -301,12 +327,20 @@
 
     els.requestTokensBtn.addEventListener("click", () => {
       const quantity = Number(els.tokenQty.value);
-      if (!signedIn() || !Number.isInteger(quantity) || quantity < 1) return;
+      if (!signedIn()) {
+        setActionStatus("Sign in before submitting a token request.", true);
+        return;
+      }
+      if (!Number.isFinite(quantity) || quantity < MIN_TOKEN_QUANTITY) {
+        setActionStatus(`Enter a valid token quantity (minimum ${MIN_TOKEN_QUANTITY}).`, true);
+        return;
+      }
       state.tokenRequests.push({
-        quantity,
+        quantity: Number(quantity.toFixed(8)),
         requestedAt: Date.now(),
         approved: false
       });
+      setActionStatus("Payment request submitted.");
       saveState();
       render();
     });
@@ -318,14 +352,23 @@
     els.bidBtn.addEventListener("click", () => {
       const selected = auctions.find((a) => a.id === els.auctionSelect.value);
       const amount = Number(els.bidAmount.value);
-      if (!signedIn() || !selected || !Number.isFinite(amount) || amount <= selected.highestBid) return;
-      selected.highestBid = amount;
+      const currentHighest = selected ? (state.auctionHighestBids[selected.id] ?? selected.highestBid) : 0;
+      if (!signedIn()) {
+        setActionStatus("Sign in before placing a bid.", true);
+        return;
+      }
+      if (!selected || !Number.isFinite(amount) || amount < currentHighest + MIN_BID_INCREMENT_USD) {
+        setActionStatus(`Bid must be at least $${currentHighest + MIN_BID_INCREMENT_USD}.`, true);
+        return;
+      }
+      state.auctionHighestBids[selected.id] = amount;
       state.bids.push({
         userName: state.user.name,
         amount,
         item: selected.item,
         at: Date.now()
       });
+      setActionStatus("Bid submitted.");
       saveState();
       render();
     });
