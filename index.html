@@ -36,6 +36,15 @@
     .modal-header button { width: auto; background: transparent; border: 1px solid #445; color: #aac; padding: 4px 10px; font-size: 1rem; border-radius: 6px; margin-top: 0; }
     .modal-header button:hover { background: #2a3a5a; }
     #playerFrame { display: block; width: 100%; aspect-ratio: 16/9; border: 0; background: #000; }
+    /* Resonance level filter bar */
+    .level-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+    .level-btn { width: auto; margin-top: 0; padding: 4px 10px; font-size: 0.78rem; border-radius: 20px; border: 2px solid transparent; cursor: pointer; font-weight: 700; }
+    .level-btn.active { border-color: #162033; box-shadow: 0 0 0 2px rgba(22,32,51,0.35); }
+    /* Element badge on each movie row */
+    .elem-badge { display: inline-block; font-size: 0.68rem; font-weight: 800; padding: 1px 5px; border-radius: 4px; margin-right: 5px; vertical-align: middle; line-height: 1.5; }
+    /* Live-fetch bar */
+    .fetch-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .fetch-bar button { width: auto; margin-top: 0; padding: 5px 14px; font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -80,8 +89,13 @@
       </section>
 
       <section class="card" style="grid-column: 1/-1;">
-        <h2>100 Movie Catalog Entries</h2>
-        <p class="hint">Each movie purchase charges $5.</p>
+        <h2>Resonance Archive — Movie Catalog</h2>
+        <p class="hint">Each movie purchase charges $5. Filter by resonance level or fetch additional public-domain titles live from Internet Archive.</p>
+        <div class="level-filter" id="levelFilter"></div>
+        <div class="fetch-bar">
+          <button id="fetchBtn" class="secondary">⬇ Live Fetch from Archive</button>
+          <span id="fetchStatus" class="hint"></span>
+        </div>
         <div class="movie-list" id="movieList"></div>
       </section>
     </div>
@@ -226,6 +240,38 @@
       { id: 99, title: "His Wedding Night (1917)",                  archiveId: "HisWeddingNight1917Arbuckle" },
       { id: 100, title: "The Frozen North (1922)",                  archiveId: "TheFrozenNorth1922Keaton" }
     ];
+
+    // ── Resonance Levels ─────────────────────────────────────────────────────
+    // Each level maps an element to a film era. Year is extracted from the
+    // title string so no separate "year" field is needed on each movie.
+    const resonanceLevels = [
+      { id: 1, symbol: "H",  name: "Hydrogen",  range: [0,    1910], desc: "Pioneer Era",         bg: "#f5c518", fg: "#111" },
+      { id: 2, symbol: "He", name: "Helium",    range: [1911, 1919], desc: "Silent Comedy",        bg: "#a3d8f4", fg: "#111" },
+      { id: 3, symbol: "Li", name: "Lithium",   range: [1920, 1922], desc: "Golden Silent",        bg: "#f4a3a3", fg: "#111" },
+      { id: 4, symbol: "Be", name: "Beryllium", range: [1923, 1924], desc: "Comedy Masters",       bg: "#a3f4b6", fg: "#111" },
+      { id: 5, symbol: "B",  name: "Boron",     range: [1925, 1929], desc: "Expressionism",        bg: "#f4c9a3", fg: "#111" },
+      { id: 6, symbol: "C",  name: "Carbon",    range: [1930, 1938], desc: "Pre-Code & Talkies",   bg: "#d4d4d4", fg: "#111" },
+      { id: 7, symbol: "N",  name: "Nitrogen",  range: [1939, 1944], desc: "Classic Hollywood",    bg: "#a3b8f4", fg: "#111" },
+      { id: 8, symbol: "O",  name: "Oxygen",    range: [1945, 1954], desc: "Film Noir",            bg: "#a3e6e6", fg: "#111" },
+      { id: 9, symbol: "F",  name: "Fluorine",  range: [1955, 9999], desc: "B-Movies & New Wave",  bg: "#d0a3f4", fg: "#111" }
+    ];
+
+    let currentLevelFilter = 0; // 0 = All levels
+    let liveMovies = [];         // Session-only titles fetched from Internet Archive
+
+    function extractYear(title) {
+      const m = title.match(/\((\d{4})\)/);
+      return m ? parseInt(m[1], 10) : 1900;
+    }
+
+    function movieLevel(year) {
+      return resonanceLevels.find(l => year >= l.range[0] && year <= l.range[1]) || resonanceLevels[8];
+    }
+
+    function allMovies() {
+      const existingIds = new Set(movies.map(m => m.archiveId));
+      return movies.concat(liveMovies.filter(m => !existingIds.has(m.archiveId)));
+    }
 
     const els = {
       name: document.getElementById("name"),
@@ -427,15 +473,62 @@
       document.body.style.overflow = "";
     }
 
+    function renderLevelFilter() {
+      const bar = document.getElementById("levelFilter");
+      if (!bar) return;
+      bar.innerHTML = "";
+
+      const allBtn = document.createElement("button");
+      allBtn.className = "level-btn" + (currentLevelFilter === 0 ? " active" : "");
+      allBtn.style.background = currentLevelFilter === 0 ? "#2f63ff" : "#e8eeff";
+      allBtn.style.color = currentLevelFilter === 0 ? "#fff" : "#162033";
+      allBtn.textContent = "All";
+      allBtn.addEventListener("click", () => { currentLevelFilter = 0; render(); });
+      bar.appendChild(allBtn);
+
+      resonanceLevels.forEach(level => {
+        const btn = document.createElement("button");
+        btn.className = "level-btn" + (currentLevelFilter === level.id ? " active" : "");
+        btn.style.background = level.bg;
+        btn.style.color = level.fg;
+        btn.title = `${level.name} — ${level.desc}`;
+        btn.textContent = `${level.symbol} · ${level.name}`;
+        btn.addEventListener("click", () => { currentLevelFilter = level.id; render(); });
+        bar.appendChild(btn);
+      });
+    }
+
     function renderMovies() {
+      renderLevelFilter();
       els.movieList.innerHTML = "";
       const walletValue = totalSpendableValueUsd();
-      movies.forEach((movie) => {
+      const source = currentLevelFilter === 0
+        ? allMovies()
+        : allMovies().filter(m => movieLevel(extractYear(m.title)).id === currentLevelFilter);
+
+      if (source.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.style.padding = "8px";
+        empty.textContent = "No films in this resonance level.";
+        els.movieList.appendChild(empty);
+        return;
+      }
+
+      source.forEach((movie) => {
+        const level = movieLevel(extractYear(movie.title));
         const row = document.createElement("div");
         row.className = "movie-item";
 
         const titleSpan = document.createElement("span");
-        titleSpan.textContent = movie.title;
+        const badge = document.createElement("span");
+        badge.className = "elem-badge";
+        badge.style.background = level.bg;
+        badge.style.color = level.fg;
+        badge.title = `${level.name} — ${level.desc}`;
+        badge.textContent = level.symbol;
+        titleSpan.appendChild(badge);
+        titleSpan.appendChild(document.createTextNode(movie.title));
 
         const btnRow = document.createElement("div");
         btnRow.className = "btn-row";
@@ -507,6 +600,52 @@
     });
 
     els.tokenQty.addEventListener("input", renderWallet);
+
+    async function fetchFromArchive() {
+      const fetchBtn = document.getElementById("fetchBtn");
+      const fetchStatus = document.getElementById("fetchStatus");
+      fetchBtn.disabled = true;
+      fetchStatus.textContent = "Fetching…";
+      try {
+        const params = [
+          "q=mediatype:(movies)+AND+subject:(public+domain)",
+          "fl[]=identifier", "fl[]=title", "fl[]=year",
+          "sort[]=downloads+desc",
+          "output=json", "rows=30"
+        ].join("&");
+        const res = await fetch(`https://archive.org/advancedsearch.php?${params}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const docs = data?.response?.docs ?? [];
+        const existingIds = new Set(
+          movies.map(m => m.archiveId).concat(liveMovies.map(m => m.archiveId))
+        );
+        let added = 0;
+        docs.forEach(doc => {
+          if (!doc.identifier || !doc.title) return;
+          if (!ARCHIVE_ID_PATTERN.test(doc.identifier)) return;
+          if (existingIds.has(doc.identifier)) return;
+          const yearStr = doc.year ? ` (${doc.year})` : "";
+          liveMovies.push({
+            id: 1000 + liveMovies.length + 1,
+            title: `${String(doc.title).trim()}${yearStr}`,
+            archiveId: doc.identifier
+          });
+          existingIds.add(doc.identifier);
+          added++;
+        });
+        fetchStatus.textContent = added > 0
+          ? `✔ Added ${added} new title${added !== 1 ? "s" : ""} from Internet Archive.`
+          : "No new titles found.";
+        render();
+      } catch (err) {
+        fetchStatus.textContent = `⚠ Fetch failed: ${err.message}`;
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    }
+
+    document.getElementById("fetchBtn").addEventListener("click", fetchFromArchive);
 
     els.closePlayer.addEventListener("click", closePlayer);
     els.playerModal.addEventListener("click", (e) => {
