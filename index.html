@@ -816,7 +816,7 @@
           if (!req.approved && isAdmin()) {
             const approveBtn = document.createElement("button");
             approveBtn.type = "button";
-            approveBtn.textContent = "Approve Request & Mark Payment Received";
+            approveBtn.textContent = "Approve & Mark Paid";
             approveBtn.style.marginTop = "6px";
             approveBtn.addEventListener("click", () => {
               approveTokenRequest(req);
