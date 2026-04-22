@@ -114,6 +114,8 @@
         <label for="tokenQty">Catalysts requested after PayPal payment ($1 each)</label>
         <input id="tokenQty" type="number" min="0.01" step="0.01" value="1" />
         <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
+        <div class="hint">Daily value chart projection:</div>
+        <ul id="requestGrowthChart"></ul>
         <button id="requestTokensBtn">Submit Payment Request</button>
         <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request Catalysts. Approval happens after 24h.</div>
         <div id="actionStatus" class="hint"></div>
@@ -192,13 +194,15 @@
   <script>
     const storageKey = "omarTokenData";
     const tokenBuyPriceUsd = 1;
+    const TOKEN_VALUE_DAILY_GROWTH_USD = 1;
+    const CHART_PROJECTION_DAYS = 7;
     const MS_PER_DAY = 86400000;
     const FLOAT_EPSILON = 0.000001;
     const MIN_TOKEN_QUANTITY = 0.01;
     const MAX_TOKEN_QUANTITY = 100000;
     const MIN_BID_INCREMENT_USD = 1;
     const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
-    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "seller@example.com";
+    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "marvaseater@gmail.com";
     const state = loadState();
 
     const auctions = [
@@ -634,6 +638,7 @@
       walletTokens: document.getElementById("walletTokens"),
       tokenQty: document.getElementById("tokenQty"),
       requestCharge: document.getElementById("requestCharge"),
+      requestGrowthChart: document.getElementById("requestGrowthChart"),
       paymentEmail: document.getElementById("paymentEmail"),
       actionStatus: document.getElementById("actionStatus"),
       requestTokensBtn: document.getElementById("requestTokensBtn"),
@@ -688,7 +693,7 @@
 
     function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
       const elapsedDays = Math.max(0, Math.floor((now - purchasedAt) / MS_PER_DAY));
-      return 1 + elapsedDays;
+      return tokenBuyPriceUsd + (elapsedDays * TOKEN_VALUE_DAILY_GROWTH_USD);
     }
 
     function totalTokenCount() {
@@ -732,17 +737,30 @@
       state.tokenRequests.forEach((req) => {
         const ageMs = now - req.requestedAt;
         if (!req.approved && ageMs >= MS_PER_DAY) {
-          req.approved = true;
-          state.tokenLots.push({
-            quantity: req.quantity,
-            purchasedAt: req.requestedAt
-          });
+          approveTokenRequest(req);
         }
       });
     }
 
     function signedIn() {
       return Boolean(state.user && state.user.name && state.user.email);
+    }
+
+    function approveTokenRequest(req) {
+      if (req.approved) return;
+      req.approved = true;
+      state.tokenLots.push({
+        quantity: req.quantity,
+        purchasedAt: req.requestedAt
+      });
+    }
+
+    function formatChartDate(ts) {
+      return new Date(ts).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+      });
     }
 
     function setActionStatus(message, isError = false) {
@@ -768,10 +786,22 @@
       const requestedQty = Number(els.tokenQty.value);
       const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * tokenBuyPriceUsd : 0;
       els.requestCharge.textContent = `$${charge.toFixed(2)}`;
+      els.requestGrowthChart.replaceChildren();
+      if (Number.isFinite(requestedQty) && requestedQty > 0) {
+        const start = Date.now();
+        for (let day = 0; day < CHART_PROJECTION_DAYS; day++) {
+          const li = document.createElement("li");
+          const pointDate = start + (day * MS_PER_DAY);
+          const valuePerToken = tokenBuyPriceUsd + (day * TOKEN_VALUE_DAILY_GROWTH_USD);
+          const totalValue = requestedQty * valuePerToken;
+          li.textContent = `${formatChartDate(pointDate)}: $${totalValue.toFixed(2)}`;
+          els.requestGrowthChart.appendChild(li);
+        }
+      }
     }
 
     function renderRequests() {
-      els.requestsList.innerHTML = "";
+      els.requestsList.replaceChildren();
       state.tokenRequests
         .slice()
         .reverse()
