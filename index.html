@@ -107,17 +107,18 @@
 
       <section class="card">
         <h2>Resonance Catalyst Wallet</h2>
-        <div>Buy price per Catalyst: <span class="pill">$1</span></div>
-        <div>Spendable wallet value: <span id="walletValue" class="pill">$0.00</span></div>
-        <p class="hint">Each Resonance Catalyst gains ~$1/day in spend value from purchase. Spend Catalysts to unlock films or discharge Resonance Events.</p>
+        <div>Format cost per Catalyst: <span class="pill">1 Infinity</span></div>
+        <div>Infinity source balance: <span id="infinityBalance" class="pill">100.00 Infinity</span></div>
+        <div>Catalyst service value: <span id="walletValue" class="pill">0.00 Infinity</span></div>
+        <p class="hint">Each Resonance Catalyst is formatted from Infinity and gains 1 Infinity/day in service value. Spend Catalysts to unlock films or discharge Resonance Events.</p>
         <div>Available Catalysts (decimals supported): <span id="walletTokens" class="pill">0</span></div>
-        <label for="tokenQty">Catalysts requested after PayPal payment ($1 each)</label>
+        <label for="tokenQty">Catalysts to format from Infinity (1 Infinity each)</label>
         <input id="tokenQty" type="number" min="0.01" step="0.01" value="1" />
-        <div class="hint">Current request charge: <span id="requestCharge" class="pill">$1.00</span></div>
+        <div class="hint">Infinity reserved: <span id="requestCharge" class="pill">1.00 Infinity</span></div>
         <div class="hint">Daily value chart projection:</div>
         <ul id="requestGrowthChart"></ul>
-        <button id="requestTokensBtn">Submit Payment Request</button>
-        <div class="hint">Pay to <code id="paymentEmail"></code> (PayPal), then request Catalysts. Approval happens after 24h.</div>
+        <button id="requestTokensBtn">Format Service Coin</button>
+        <div class="hint">The local prototype ledger reserves Infinity immediately; the formatted Catalyst activates after 24 hours.</div>
         <div id="actionStatus" class="hint"></div>
         <ul id="requestsList"></ul>
       </section>
@@ -127,7 +128,7 @@
         <label for="auctionSelect">Auction Item</label>
         <select id="auctionSelect"></select>
         <div id="auctionInfo" class="hint"></div>
-        <label for="bidAmount">Bid Amount (USD)</label>
+        <label for="bidAmount">Bid Amount (Infinity)</label>
         <input id="bidAmount" type="number" min="1" value="1" />
         <button id="bidBtn">Sign Up & Place Bid</button>
         <ul id="bidsList"></ul>
@@ -164,7 +165,7 @@
 
       <section class="card" style="grid-column: 1/-1;">
         <h2>Resonance Archive — Movie Catalog</h2>
-        <p class="hint">Each movie purchase charges $5. Filter by resonance level or fetch additional public-domain titles live from Internet Archive.</p>
+        <p class="hint">Each movie unlock uses 5 Infinity of Catalyst service value. Filter by resonance level or fetch additional public-domain titles live from Internet Archive.</p>
         <div class="level-filter" id="levelFilter"></div>
         <div class="fetch-bar">
           <button id="fetchBtn" class="secondary">⬇ Live Fetch from Archive</button>
@@ -193,16 +194,16 @@
 
   <script>
     const storageKey = "omarTokenData";
-    const tokenBuyPriceUsd = 1;
-    const TOKEN_VALUE_DAILY_GROWTH_USD = 1;
+    const CATALYST_UNIT_INFINITY = 1;
+    const CATALYST_DAILY_GROWTH_INFINITY = 1;
     const CHART_PROJECTION_DAYS = 7;
     const MS_PER_DAY = 86400000;
     const FLOAT_EPSILON = 0.000001;
     const MIN_TOKEN_QUANTITY = 0.01;
     const MAX_TOKEN_QUANTITY = 100000;
-    const MIN_BID_INCREMENT_USD = 1;
+    const MIN_BID_INCREMENT_INFINITY = 1;
     const LEGACY_MIGRATION_PURCHASED_AT = new Date("2026-01-01T00:00:00Z").getTime();
-    const PAYMENT_PAYPAL_EMAIL = localStorage.getItem("omarPayPalEmail") || "marvaseater@gmail.com";
+    const DEFAULT_INFINITY_BALANCE = 100;
     const state = loadState();
 
     const auctions = [
@@ -211,7 +212,7 @@
       { id: "coin-set-1916", item: "1916 Mercury Dime", highestBid: 18 }
     ];
 
-    const moviePriceUsd = 5;
+    const MOVIE_PRICE_INFINITY = 5;
     // All films are public-domain titles available on Internet Archive.
     // Embedded directly in the page player — no YouTube involved.
     const movies = [
@@ -516,7 +517,7 @@
       controls.innerHTML = "";
 
       if (isStable) {
-        const walletVal = totalSpendableValueUsd();
+        const walletVal = totalSpendableInfinity();
         const btn = document.createElement("button");
         btn.innerHTML = `&#x26A1; Discharge &mdash; ${chain.cost} Catalyst${chain.cost !== 1 ? "s" : ""}`;
         btn.disabled = !signedIn() || walletVal < chain.cost;
@@ -560,7 +561,7 @@
         return;
       }
       const chain = activeChain();
-      if (totalSpendableValueUsd() < chain.cost) {
+      if (totalSpendableInfinity() < chain.cost) {
         document.getElementById("resonanceStatus").textContent =
           `Insufficient Resonance Catalysts — need ${chain.cost}.`;
         return;
@@ -584,7 +585,7 @@
         if (docs.length === 0) throw new Error("No resonant files found in this field.");
         const pick = docs[Math.floor(Math.random() * docs.length)];
         // Charge only after a confirmed result
-        if (!spendUsdFromLots(chain.cost)) throw new Error("Insufficient Resonance Catalysts.");
+        if (!spendInfinityFromLots(chain.cost)) throw new Error("Insufficient Resonance Catalysts.");
         saveState();
         resonanceMovie = {
           id: ++dynamicIdCounter,
@@ -639,7 +640,7 @@
       tokenQty: document.getElementById("tokenQty"),
       requestCharge: document.getElementById("requestCharge"),
       requestGrowthChart: document.getElementById("requestGrowthChart"),
-      paymentEmail: document.getElementById("paymentEmail"),
+      infinityBalance: document.getElementById("infinityBalance"),
       actionStatus: document.getElementById("actionStatus"),
       requestTokensBtn: document.getElementById("requestTokensBtn"),
       requestsList: document.getElementById("requestsList"),
@@ -663,10 +664,12 @@
           tokenRequests: [],
           bids: [],
           auctionHighestBids: {},
-          unlockedMovies: []
+          unlockedMovies: [],
+          infinityBalance: DEFAULT_INFINITY_BALANCE,
+          ledgerEntries: []
         };
       } catch {
-        return { user: null, tokenLots: [], tokenRequests: [], bids: [], auctionHighestBids: {}, unlockedMovies: [] };
+        return { user: null, tokenLots: [], tokenRequests: [], bids: [], auctionHighestBids: {}, unlockedMovies: [], infinityBalance: DEFAULT_INFINITY_BALANCE, ledgerEntries: [] };
       }
     }
 
@@ -683,6 +686,8 @@
       if (!Array.isArray(state.unlockedMovies)) state.unlockedMovies = [];
       if (!Array.isArray(state.tokenRequests)) state.tokenRequests = [];
       if (!Array.isArray(state.bids)) state.bids = [];
+      if (!Number.isFinite(state.infinityBalance)) state.infinityBalance = DEFAULT_INFINITY_BALANCE;
+      if (!Array.isArray(state.ledgerEntries)) state.ledgerEntries = [];
       if (!state.auctionHighestBids || typeof state.auctionHighestBids !== "object") state.auctionHighestBids = {};
       auctions.forEach((auction) => {
         if (!Number.isFinite(state.auctionHighestBids[auction.id])) {
@@ -693,20 +698,20 @@
 
     function tokenUnitSpendValue(purchasedAt, now = Date.now()) {
       const elapsedDays = Math.max(0, Math.floor((now - purchasedAt) / MS_PER_DAY));
-      return tokenBuyPriceUsd + (elapsedDays * TOKEN_VALUE_DAILY_GROWTH_USD);
+      return CATALYST_UNIT_INFINITY + (elapsedDays * CATALYST_DAILY_GROWTH_INFINITY);
     }
 
     function totalTokenCount() {
       return state.tokenLots.reduce((sum, lot) => sum + lot.quantity, 0);
     }
 
-    function totalSpendableValueUsd(now = Date.now()) {
+    function totalSpendableInfinity(now = Date.now()) {
       return state.tokenLots.reduce((sum, lot) => sum + (lot.quantity * tokenUnitSpendValue(lot.purchasedAt, now)), 0);
     }
 
-    function spendUsdFromLots(amountUsd) {
+    function spendInfinityFromLots(amountInfinity) {
       const originalLots = state.tokenLots.map((lot) => ({ ...lot }));
-      let remaining = amountUsd;
+      let remaining = amountInfinity;
       const lots = state.tokenLots
         .map((lot) => ({ lot, unitValue: tokenUnitSpendValue(lot.purchasedAt) }))
         .sort((a, b) => b.unitValue - a.unitValue);
@@ -778,23 +783,23 @@
 
     function renderWallet() {
       const qty = Number(totalTokenCount().toFixed(8));
-      const spendValue = totalSpendableValueUsd();
+      const spendValue = totalSpendableInfinity();
       els.walletTokens.textContent = qty;
-      els.walletValue.textContent = `$${spendValue.toFixed(2)}`;
-      els.paymentEmail.textContent = PAYMENT_PAYPAL_EMAIL;
+      els.walletValue.textContent = `${spendValue.toFixed(2)} Infinity`;
+      els.infinityBalance.textContent = `${state.infinityBalance.toFixed(2)} Infinity`;
       els.requestTokensBtn.disabled = !signedIn();
       const requestedQty = Number(els.tokenQty.value);
-      const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * tokenBuyPriceUsd : 0;
-      els.requestCharge.textContent = `$${charge.toFixed(2)}`;
+      const charge = Number.isFinite(requestedQty) && requestedQty > 0 ? requestedQty * CATALYST_UNIT_INFINITY : 0;
+      els.requestCharge.textContent = `${charge.toFixed(2)} Infinity`;
       els.requestGrowthChart.replaceChildren();
       if (Number.isFinite(requestedQty) && requestedQty > 0) {
         const start = Date.now();
         for (let day = 0; day < CHART_PROJECTION_DAYS; day++) {
           const li = document.createElement("li");
           const pointDate = start + (day * MS_PER_DAY);
-          const valuePerToken = tokenBuyPriceUsd + (day * TOKEN_VALUE_DAILY_GROWTH_USD);
+          const valuePerToken = CATALYST_UNIT_INFINITY + (day * CATALYST_DAILY_GROWTH_INFINITY);
           const totalValue = requestedQty * valuePerToken;
-          li.textContent = `${formatChartDate(pointDate)}: $${totalValue.toFixed(2)}`;
+          li.textContent = `${formatChartDate(pointDate)}: ${totalValue.toFixed(2)} Infinity`;
           els.requestGrowthChart.appendChild(li);
         }
       }
@@ -808,7 +813,7 @@
         .forEach((req) => {
           const li = document.createElement("li");
           const status = req.approved ? "approved" : "pending (up to 24h)";
-          li.textContent = `${req.quantity} Catalyst(s) ($${(req.quantity * tokenBuyPriceUsd).toFixed(2)}) — ${status}`;
+          li.textContent = `${req.quantity} Catalyst(s) (${(req.quantity * CATALYST_UNIT_INFINITY).toFixed(2)} Infinity) — ${status}`;
           els.requestsList.appendChild(li);
         });
     }
@@ -825,7 +830,7 @@
       els.bidsList.innerHTML = "";
       state.bids.slice().reverse().forEach((bid) => {
         const li = document.createElement("li");
-        li.textContent = `${bid.userName} bid $${bid.amount} on ${bid.item}`;
+        li.textContent = `${bid.userName} bid ${bid.amount} Infinity on ${bid.item}`;
         els.bidsList.appendChild(li);
       });
       els.bidBtn.disabled = !signedIn();
@@ -835,7 +840,7 @@
       const found = auctions.find((a) => a.id === els.auctionSelect.value) || auctions[0];
       if (!found) return;
       const currentHighest = state.auctionHighestBids[found.id] ?? found.highestBid;
-      els.auctionInfo.textContent = `Current highest bid: $${currentHighest}`;
+      els.auctionInfo.textContent = `Current highest bid: ${currentHighest} Infinity`;
     }
 
     const ARCHIVE_ID_PATTERN = /^[A-Za-z0-9_.\-]{1,200}$/;
@@ -883,7 +888,7 @@
     function renderMovies() {
       renderLevelFilter();
       els.movieList.innerHTML = "";
-      const walletValue = totalSpendableValueUsd();
+      const walletValue = totalSpendableInfinity();
       const source = currentLevelFilter === 0
         ? allMovies()
         : allMovies().filter(m => movieLevel(extractYear(m.title)).id === currentLevelFilter);
@@ -924,10 +929,10 @@
           btnRow.appendChild(watchBtn);
         } else {
           const buyBtn = document.createElement("button");
-          buyBtn.textContent = `Buy ($${moviePriceUsd})`;
-          buyBtn.disabled = !signedIn() || walletValue < moviePriceUsd;
+          buyBtn.textContent = `Unlock (${MOVIE_PRICE_INFINITY} Infinity)`;
+          buyBtn.disabled = !signedIn() || walletValue < MOVIE_PRICE_INFINITY;
           buyBtn.addEventListener("click", () => {
-            if (!spendUsdFromLots(moviePriceUsd)) return;
+            if (!spendInfinityFromLots(MOVIE_PRICE_INFINITY)) return;
             state.unlockedMovies.push(movie.id);
             saveState();
             render();
@@ -972,12 +977,24 @@
         setActionStatus(`Enter a valid token quantity (${MIN_TOKEN_QUANTITY} - ${MAX_TOKEN_QUANTITY}).`, true);
         return;
       }
+      const infinityCost = Number((quantity * CATALYST_UNIT_INFINITY).toFixed(8));
+      if (state.infinityBalance + FLOAT_EPSILON < infinityCost) {
+        setActionStatus(`Insufficient Infinity — need ${infinityCost.toFixed(2)}.`, true);
+        return;
+      }
+      state.infinityBalance = Number((state.infinityBalance - infinityCost).toFixed(8));
+      state.ledgerEntries.push({
+        type: "format-service-coin",
+        debitInfinity: infinityCost,
+        quantity,
+        createdAt: Date.now()
+      });
       state.tokenRequests.push({
         quantity: Number(quantity.toFixed(8)),
         requestedAt: Date.now(),
         approved: false
       });
-      setActionStatus("Payment request submitted.");
+      setActionStatus("Infinity reserved; Catalyst formatting request recorded.");
       saveState();
       render();
     });
@@ -1049,8 +1066,8 @@
         setActionStatus("Sign in before placing a bid.", true);
         return;
       }
-      if (!selected || !Number.isFinite(amount) || amount < currentHighest + MIN_BID_INCREMENT_USD) {
-        setActionStatus(`Bid must be at least $${currentHighest + MIN_BID_INCREMENT_USD}.`, true);
+      if (!selected || !Number.isFinite(amount) || amount < currentHighest + MIN_BID_INCREMENT_INFINITY) {
+        setActionStatus(`Bid must be at least ${currentHighest + MIN_BID_INCREMENT_INFINITY} Infinity.`, true);
         return;
       }
       state.auctionHighestBids[selected.id] = amount;
