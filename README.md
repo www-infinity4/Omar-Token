@@ -1,22 +1,25 @@
 # Omar-Token
 
-Minimal single-page demo for a personal auction token:
+Single-page prototype for an Infinity-derived personal auction and entertainment service coin:
 
-- Sign in with name/email (stored locally in browser only)
-- Token buy price is **$1 per token**
-- Token spend value grows over time (about +$1/day based on days since token purchase)
-- Buyers submit a PayPal payment request in this demo flow (proof upload is not implemented)
-- Token requests are approved after 24 hours
+- Sign in with name/email (stored locally in the browser only)
+- A new local prototype wallet begins with 100 Infinity
+- Formatting one Resonance Catalyst reserves 1 Infinity on the local ledger
+- Catalyst service value grows by 1 Infinity per day after activation
+- Formatting requests activate after 24 hours
 - 100 public-domain film entries sourced from Internet Archive (archive.org)
-- Films play inline in a custom-branded page player — no YouTube, no external navigation
-- Spending supports decimal token amounts so users can receive value as change
-- Auction listing supports bidder sign-up and bidding
+- Films play inline in a custom-branded page player — no YouTube or external checkout
+- Spending supports decimal Catalyst amounts
+- Auction sign-up and bidding use Infinity units only
+- No outside-money checkout or bank connection
 
 ## Run
 
 Open `index.html` in a browser.
 
-Optional: set `localStorage.omarPayPalEmail` to your PayPal address before use.
+## Prototype boundary
+
+This build stores its wallet and ledger in browser localStorage. It demonstrates the Infinity-only transaction contract but is not yet a shared, authenticated network ledger.
 
 ## Security note
 
